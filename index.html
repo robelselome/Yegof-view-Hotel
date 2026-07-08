@@ -1,0 +1,2533 @@
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Phone,
+  Calendar,
+  Compass,
+  Wifi,
+  Coffee,
+  CheckCircle,
+  Menu,
+  X,
+  ChevronDown,
+  Star,
+  Maximize2,
+  Users,
+  MapPin,
+  Clock,
+  ShieldCheck,
+  CreditCard,
+  Utensils,
+  Moon,
+  Sun,
+  Flame,
+  Music,
+  Wine,
+  Sparkles,
+  Accessibility,
+  Check,
+  Trash2,
+  Heart,
+  Bookmark,
+  Share2,
+  Search,
+  Grid,
+  Bell,
+  Settings,
+  ArrowUpRight,
+  Mail,
+} from "lucide-react";
+
+// Types & Interfaces
+interface Booking {
+  id: string;
+  roomName: string;
+  checkIn: string;
+  checkOut: string;
+  guests: number;
+  totalPrice: number;
+  customerName: string;
+  customerPhone: string;
+  specialRequests: string;
+  status: "Confirmed" | "Pending Call Confirmation";
+  createdAt: string;
+}
+
+interface Review {
+  id: string;
+  name: string;
+  role: string;
+  rating: number;
+  comment: string;
+  date: string;
+}
+
+const ROOM_CATEGORIES = [
+  {
+    id: "sanctuary",
+    name: "Sanctuary King Room",
+    description: "Our signature mountain-view room with uncompromising space and silence. Crafted for ultimate rejuvenation.",
+    size: "48 m²",
+    rate: 140, // USD per night
+    images: [
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355465/1.8_ccwqgo.jpg",
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355457/1.6_vz2zkf.jpg",
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355440/1.4_zqyyb9.jpg",
+    ],
+    amenities: ["King Pillowtop Bed", "Premium Mountain Balcony", "Dependable Hot Showers", "Blazing-Fast Wi-Fi", "Quiet Isolation Acoustics"],
+  },
+  {
+    id: "executive",
+    name: "Executive Mountain Suite",
+    description: "Uncompromised luxury for international business professionals and project specialists, featuring high-speed workspaces.",
+    size: "62 m²",
+    rate: 190,
+    images: [
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355440/1.4_zqyyb9.jpg",
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355465/1.8_ccwqgo.jpg",
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355457/1.6_vz2zkf.jpg",
+    ],
+    amenities: ["Workstation Desk", "Separate Sitting Lounge", "Luxury Mini-Bar", "Fast Ethernet Access", "Express Daily Room Service"],
+  },
+  {
+    id: "deluxe",
+    name: "Deluxe Twin Sanctuary",
+    description: "Beautifully organized dual luxury beds with exquisite Ethiopian accents. Perfect for traveling teams and families.",
+    size: "50 m²",
+    rate: 160,
+    images: [
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355457/1.6_vz2zkf.jpg",
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355465/1.8_ccwqgo.jpg",
+      "https://res.cloudinary.com/lshk4vru/image/upload/v1783355440/1.4_zqyyb9.jpg",
+    ],
+    amenities: ["Two Elite Beds", "Modern Tech Sockets", "Rain Shower Sanctuary", "Complimentary Ethiopian Teas", "Noise Control Insulations"],
+  },
+];
+
+const INITIAL_REVIEWS: Review[] = [
+  {
+    id: "rev-1",
+    name: "Lesly D.",
+    role: "Tripadvisor Reviewer",
+    rating: 5,
+    comment: "After traveling throughout northern Ethiopia for three weeks, this is the most comfortable place I have stayed in.",
+    date: "June 2026",
+  },
+  {
+    id: "rev-2",
+    name: "Antoinnette",
+    role: "Google Local Guide",
+    rating: 5,
+    comment: "I've been coming to Ethiopia for over 10 years and this place is top notch! ...Great food, rooms are quiet and spacious, always clean. Hot showers daily, internet great too.",
+    date: "May 2026",
+  },
+];
+
+export default function App() {
+  // Navigation & UI States
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeRoomIndex, setActiveRoomIndex] = useState(0);
+  const [activeRoomImageIndex, setActiveRoomImageIndex] = useState(0);
+  const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
+
+  // Luxury Route Planner & Status Dot States
+  const [selectedRoute, setSelectedRoute] = useState<"airport" | "dessie" | "addis">("airport");
+  const [activeStatusDot, setActiveStatusDot] = useState<number | null>(null);
+
+  // Booking Form State
+  const [selectedRoomId, setSelectedRoomId] = useState("sanctuary");
+  const [checkIn, setCheckIn] = useState("2026-07-10");
+  const [checkOut, setCheckOut] = useState("2026-07-13");
+  const [guests, setGuests] = useState(2);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [bookingSuccessModal, setBookingSuccessModal] = useState<Booking | null>(null);
+
+  // Reviews State
+  const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
+  const [newReviewName, setNewReviewName] = useState("");
+  const [newReviewComment, setNewReviewComment] = useState("");
+  const [newReviewRating, setNewReviewRating] = useState(5);
+
+  // Stored Bookings State (Simulated)
+  const [userBookings, setUserBookings] = useState<Booking[]>([]);
+  const [showMyBookings, setShowMyBookings] = useState(false);
+
+  // Load from LocalStorage
+  useEffect(() => {
+    const savedBookings = localStorage.getItem("yegof_view_bookings");
+    if (savedBookings) {
+      try {
+        setUserBookings(JSON.parse(savedBookings));
+      } catch (e) {
+        console.error("Failed to load bookings");
+      }
+    }
+
+    const savedReviews = localStorage.getItem("yegof_view_reviews");
+    if (savedReviews) {
+      try {
+        setReviews(JSON.parse(savedReviews));
+      } catch (e) {
+        console.error("Failed to load reviews");
+      }
+    }
+  }, []);
+
+  // Save Bookings
+  const saveBookings = (updated: Booking[]) => {
+    setUserBookings(updated);
+    localStorage.setItem("yegof_view_bookings", JSON.stringify(updated));
+  };
+
+  // Save Reviews
+  const saveReviews = (updated: Review[]) => {
+    setReviews(updated);
+    localStorage.setItem("yegof_view_reviews", JSON.stringify(updated));
+  };
+
+  // Calculate Nights
+  const calculateNights = (inDate: string, outDate: string) => {
+    const start = new Date(inDate);
+    const end = new Date(outDate);
+    const diff = end.getTime() - start.getTime();
+    const nights = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return nights > 0 ? nights : 1;
+  };
+
+  const currentSelectedRoom = ROOM_CATEGORIES.find((r) => r.id === selectedRoomId) || ROOM_CATEGORIES[0];
+  const totalNights = calculateNights(checkIn, checkOut);
+  const estimatedTotalPrice = totalNights * currentSelectedRoom.rate * (guests > 2 ? 1.15 : 1);
+
+  // Handle Booking Submit
+  const handleCreateBooking = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName || !customerPhone) {
+      alert("Please enter your name and phone number to request a booking.");
+      return;
+    }
+
+    const newBooking: Booking = {
+      id: "YGV-" + Math.floor(100000 + Math.random() * 900000),
+      roomName: currentSelectedRoom.name,
+      checkIn,
+      checkOut,
+      guests,
+      totalPrice: estimatedTotalPrice,
+      customerName,
+      customerPhone,
+      specialRequests,
+      status: "Pending Call Confirmation",
+      createdAt: new Date().toLocaleDateString(),
+    };
+
+    const updated = [newBooking, ...userBookings];
+    saveBookings(updated);
+    setBookingSuccessModal(newBooking);
+
+    // Open mail client to send booking details directly to Robel
+    const subject = encodeURIComponent(`Booking Request: ${newBooking.roomName} (Code: ${newBooking.id})`);
+    const body = encodeURIComponent(
+      `Dear Yegof View Concierge,\n\n` +
+      `I would like to submit a stay reservation with the following details:\n\n` +
+      `- Reservation Code: ${newBooking.id}\n` +
+      `- Selected Suite: ${newBooking.roomName}\n` +
+      `- Full Name: ${newBooking.customerName}\n` +
+      `- Contact Phone: ${newBooking.customerPhone}\n` +
+      `- Check-In Date: ${newBooking.checkIn}\n` +
+      `- Check-Out Date: ${newBooking.checkOut}\n` +
+      `- Number of Guests: ${newBooking.guests}\n` +
+      `- Estimated Stay Price: $${newBooking.totalPrice} USD\n` +
+      `- Special Requests: ${newBooking.specialRequests || "None"}\n\n` +
+      `Please contact me to confirm final availability.\n\nBest regards,\n${newBooking.customerName}`
+    );
+    
+    // Redirecting to mailto link
+    window.location.href = `mailto:robelsisayawoke22@gmail.com?subject=${subject}&body=${body}`;
+
+    // Clear form
+    setCustomerName("");
+    setCustomerPhone("");
+    setSpecialRequests("");
+  };
+
+  // Delete/Cancel booking
+  const handleCancelBooking = (id: string) => {
+    if (confirm("Are you sure you want to cancel this booking request?")) {
+      const updated = userBookings.filter((b) => b.id !== id);
+      saveBookings(updated);
+    }
+  };
+
+  // Add Custom review
+  const handleAddReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReviewName.trim() || !newReviewComment.trim()) {
+      alert("Please write your name and a brief review comment.");
+      return;
+    }
+
+    const createdReview: Review = {
+      id: "rev-" + Date.now(),
+      name: newReviewName,
+      role: "Verified Sanctuary Guest",
+      rating: newReviewRating,
+      comment: newReviewComment,
+      date: "Today",
+    };
+
+    const updated = [createdReview, ...reviews];
+    saveReviews(updated);
+
+    // Open mail client to send guest review / suggestion directly to Robel
+    const subject = encodeURIComponent(`Guest Review & Suggestion Board - ${createdReview.name}`);
+    const body = encodeURIComponent(
+      `Dear Robel,\n\nA guest has submitted a review/suggestion for Yegof View Hotel:\n\n` +
+      `- Guest Name: ${createdReview.name}\n` +
+      `- Star Rating: ${createdReview.rating}/5 Stars\n` +
+      `- Feedback / Suggestion:\n"${createdReview.comment}"\n\n` +
+      `Best regards,\n${createdReview.name}`
+    );
+    window.location.href = `mailto:robelsisayawoke22@gmail.com?subject=${subject}&body=${body}`;
+
+    setNewReviewName("");
+    setNewReviewComment("");
+    setNewReviewRating(5);
+    alert("Thank you! Your feedback has been logged and sent to robelsisayawoke22@gmail.com.");
+  };
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+    setMobileMenuOpen(false);
+  };
+
+  return (
+    <div className={`min-h-screen transition-colors duration-500 font-sans scroll-smooth ${isDarkMode ? "bg-black text-white selection:bg-white/20 selection:text-white" : "bg-white text-black selection:bg-black/10 selection:text-black"}`}>
+      
+      {/* Cinematic Top Banner with Three Status Dots */}
+      <div className={`py-2 px-4 sm:px-8 text-xs font-semibold uppercase tracking-wider flex flex-col md:flex-row items-center justify-between gap-3 relative z-50 border-b transition-colors duration-500 ${
+        isDarkMode 
+          ? "bg-zinc-950 border-zinc-900 text-zinc-300" 
+          : "bg-zinc-100 border-zinc-200 text-zinc-700"
+      }`}>
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 animate-pulse text-zinc-500" />
+          <span>Direct Phone Reservations: +251 91 142 4085</span>
+          <span className="hidden md:inline opacity-30">|</span>
+          <span className="hidden md:inline text-[10px] font-mono opacity-80">Plus Code Location: 3PGV+H5, Kombolcha</span>
+        </div>
+
+        {/* The Premium Three Dots Indicator */}
+        <div className={`flex items-center gap-3 px-3 py-1 rounded-full relative border transition-colors duration-500 ${
+          isDarkMode ? "bg-black/60 border-zinc-800" : "bg-white/80 border-zinc-200"
+        }`}>
+          <span className={`text-[9px] tracking-widest font-mono font-bold mr-1 ${isDarkMode ? "text-zinc-400" : "text-zinc-500"}`}>LIVE CHRONICLES:</span>
+          
+          {/* Dot 1 */}
+          <div className="relative group">
+            <button
+              onClick={() => setActiveStatusDot(activeStatusDot === 1 ? null : 1)}
+              className="flex items-center gap-1.5 focus:outline-none cursor-pointer"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDarkMode ? "bg-white" : "bg-black"}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isDarkMode ? "bg-white" : "bg-black"}`}></span>
+              </span>
+              <span className={`text-[9.5px] font-mono tracking-wider hidden lg:inline ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>94% OCCUPIED</span>
+            </button>
+            {/* Tooltip for desktop */}
+            <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 rounded p-2 text-[10px] tracking-normal font-serif hidden group-hover:block z-50 shadow-2xl border ${
+              isDarkMode ? "bg-zinc-950 border-zinc-800 text-white" : "bg-white border-zinc-200 text-black"
+            }`}>
+              <span className={`font-bold block font-mono text-[9px] ${isDarkMode ? "text-white" : "text-black"}`}>SANCTUARY VACANCY</span>
+              Only 2 suites remaining for tonight. Direct booking ensures space.
+            </div>
+          </div>
+
+          <span className="text-zinc-700/30 text-[9px] font-mono">|</span>
+
+          {/* Dot 2 */}
+          <div className="relative group">
+            <button
+              onClick={() => setActiveStatusDot(activeStatusDot === 2 ? null : 2)}
+              className="flex items-center gap-1.5 focus:outline-none cursor-pointer"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDarkMode ? "bg-white" : "bg-black"}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isDarkMode ? "bg-white" : "bg-black"}`}></span>
+              </span>
+              <span className={`text-[9.5px] font-mono tracking-wider hidden lg:inline ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>FIBER SPEED</span>
+            </button>
+            <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 rounded p-2 text-[10px] tracking-normal font-serif hidden group-hover:block z-50 shadow-2xl border ${
+              isDarkMode ? "bg-zinc-950 border-zinc-800 text-white" : "bg-white border-zinc-200 text-black"
+            }`}>
+              <span className={`font-bold block font-mono text-[9px] ${isDarkMode ? "text-white" : "text-black"}`}>SATELLITE FIBRE SPEED</span>
+              Symmetrical broadband backup active. Sockets in all rooms.
+            </div>
+          </div>
+
+          <span className="text-zinc-700/30 text-[9px] font-mono">|</span>
+
+          {/* Dot 3 */}
+          <div className="relative group">
+            <button
+              onClick={() => setActiveStatusDot(activeStatusDot === 3 ? null : 3)}
+              className="flex items-center gap-1.5 focus:outline-none cursor-pointer"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDarkMode ? "bg-white" : "bg-black"}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isDarkMode ? "bg-white" : "bg-black"}`}></span>
+              </span>
+              <span className={`text-[9.5px] font-mono tracking-wider hidden lg:inline ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>KITCHEN OPEN</span>
+            </button>
+            <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 rounded p-2 text-[10px] tracking-normal font-serif hidden group-hover:block z-50 shadow-2xl border ${
+              isDarkMode ? "bg-zinc-950 border-zinc-800 text-white" : "bg-white border-zinc-200 text-black"
+            }`}>
+              <span className={`font-bold block font-mono text-[9px] ${isDarkMode ? "text-white" : "text-black"}`}>ROOFTOP & BAR</span>
+              Open tonight with live traditional music sets & slow-brewed coffee.
+            </div>
+          </div>
+
+          {/* Floating Dropdown Dialog when clicked (for all devices, including mobile/tablet!) */}
+          <AnimatePresence>
+            {activeStatusDot !== null && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className={`absolute right-0 top-full mt-3 w-72 sm:w-80 rounded-xl p-5 shadow-2xl text-left z-50 font-sans normal-case tracking-normal border transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-800 text-white" : "bg-white border-zinc-200 text-black"
+                }`}
+              >
+                <div className={`flex justify-between items-center border-b pb-2.5 mb-3 ${isDarkMode ? "border-zinc-850" : "border-zinc-200"}`}>
+                  <span className={`text-[10px] font-mono uppercase tracking-widest font-bold ${isDarkMode ? "text-white" : "text-black"}`}>Boutique Live Chronicles</span>
+                  <button onClick={() => setActiveStatusDot(null)} className={`cursor-pointer ${isDarkMode ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-black"}`}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {activeStatusDot === 1 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full animate-pulse ${isDarkMode ? "bg-white" : "bg-black"}`} />
+                      <h4 className={`text-xs font-serif font-bold uppercase tracking-wider ${isDarkMode ? "text-white" : "text-black"}`}>Sanctuary Occupancy Status</h4>
+                    </div>
+                    <p className={`text-xs font-serif italic leading-relaxed ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>
+                      "Mount-view Sanctuary Suites are currently at <span className="font-bold not-italic">94% capacity</span> for tonight. Our dual-stayer King layouts have only 2 spots left."
+                    </p>
+                    <div className={`p-2.5 rounded border text-[10.5px] font-mono ${
+                      isDarkMode ? "bg-black border-zinc-900 text-zinc-400" : "bg-zinc-50 border-zinc-100 text-zinc-600"
+                    }`}>
+                      Disinfection routine: Daily at 14:00<br />
+                      Status: High Demand Registered
+                    </div>
+                  </div>
+                )}
+
+                {activeStatusDot === 2 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full animate-pulse ${isDarkMode ? "bg-white" : "bg-black"}`} />
+                      <h4 className={`text-xs font-serif font-bold uppercase tracking-wider ${isDarkMode ? "text-white" : "text-black"}`}>Broadband Sockets & Speed</h4>
+                    </div>
+                    <p className={`text-xs font-serif italic leading-relaxed ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>
+                      "Fiber-optic satellite backbone active at <span className="font-bold not-italic">140 Mbps Symmetrical</span>. Engineered to ensure seamless project reports for volunteers and delegates."
+                    </p>
+                    <div className={`p-2.5 rounded border text-[10.5px] font-mono ${
+                      isDarkMode ? "bg-black border-zinc-900 text-zinc-400" : "bg-zinc-50 border-zinc-100 text-zinc-600"
+                    }`}>
+                      Coverage: 100% Suites & Rooftops<br />
+                      Backup Battery: Fully Armed (12 hrs)
+                    </div>
+                  </div>
+                )}
+
+                {activeStatusDot === 3 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full animate-pulse ${isDarkMode ? "bg-white" : "bg-black"}`} />
+                      <h4 className={`text-xs font-serif font-bold uppercase tracking-wider ${isDarkMode ? "text-white" : "text-black"}`}>Rooftop Grill, Bar & Social</h4>
+                    </div>
+                    <p className={`text-xs font-serif italic leading-relaxed ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>
+                      "The glowing hearths are lit! Serving fresh slow-simmered stews, traditional coffee roasting, and cold drafts. Soft instrumental music scheduled to begin at 19:00."
+                    </p>
+                    <div className={`p-2.5 rounded border text-[10.5px] font-mono ${
+                      isDarkMode ? "bg-black border-zinc-900 text-zinc-400" : "bg-zinc-50 border-zinc-100 text-zinc-600"
+                    }`}>
+                      Cuisine: Halal-certified & Vegan prep<br />
+                      Signature Coffee: Harrar Triple-pour
+                    </div>
+                  </div>
+                )}
+
+                <div className={`pt-3 border-t mt-3 ${isDarkMode ? "border-zinc-800" : "border-zinc-200"}`}>
+                  <button
+                    onClick={() => { scrollToSection("booking-engine"); setActiveStatusDot(null); }}
+                    className={`w-full text-center py-2 text-[10px] font-mono uppercase tracking-wider font-bold rounded transition-all cursor-pointer ${
+                      isDarkMode ? "bg-white hover:bg-zinc-200 text-black" : "bg-black hover:bg-zinc-800 text-white"
+                    }`}
+                  >
+                    Recalculate Room Price
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+        </div>
+      </div>
+
+      {/* Navigation Header */}
+      <nav className={`h-20 sticky top-0 backdrop-blur-md border-b flex items-center justify-between px-6 sm:px-12 z-40 transition-colors duration-500 ${
+        isDarkMode 
+          ? "bg-black/90 border-zinc-900 text-white" 
+          : "bg-white/90 border-zinc-200 text-black"
+      }`}>
+        <div className="flex flex-col cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          <span className="font-serif text-2xl tracking-[0.12em] uppercase font-bold">
+            <span className={isDarkMode ? "text-white" : "text-black"}>Yegof View Hotel</span>
+          </span>
+          <span className={`text-[10px] tracking-[0.3em] uppercase ml-1 font-mono ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Kombolcha · Ethiopia</span>
+        </div>
+
+        {/* Desktop nav links */}
+        <div className="hidden lg:flex items-center space-x-8 text-xs uppercase tracking-[0.2em]">
+          <button onClick={() => scrollToSection("home")} className={`transition-colors cursor-pointer ${isDarkMode ? "text-zinc-300 hover:text-white" : "text-zinc-700 hover:text-black"}`}>The Sanctuary</button>
+          <button onClick={() => scrollToSection("accommodations")} className={`transition-colors cursor-pointer ${isDarkMode ? "text-zinc-300 hover:text-white" : "text-zinc-700 hover:text-black"}`}>Suites</button>
+          <button onClick={() => scrollToSection("amenities")} className={`transition-colors cursor-pointer ${isDarkMode ? "text-zinc-300 hover:text-white" : "text-zinc-700 hover:text-black"}`}>Amenities</button>
+          <button onClick={() => scrollToSection("culinary")} className={`transition-colors cursor-pointer ${isDarkMode ? "text-zinc-300 hover:text-white" : "text-zinc-700 hover:text-black"}`}>Dining</button>
+          <button onClick={() => scrollToSection("tradition")} className={`transition-colors cursor-pointer ${isDarkMode ? "text-zinc-300 hover:text-white" : "text-zinc-700 hover:text-black"}`}>Tradition</button>
+          <button onClick={() => scrollToSection("faq")} className={`transition-colors cursor-pointer ${isDarkMode ? "text-zinc-300 hover:text-white" : "text-zinc-700 hover:text-black"}`}>FAQ</button>
+        </div>
+
+        {/* Action Button & Dark/Light Toggle */}
+        <div className="hidden sm:flex items-center space-x-4">
+          {/* Light/Dark mode Toggle Button */}
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className={`p-2.5 rounded-full border transition-all cursor-pointer ${
+              isDarkMode 
+                ? "border-zinc-800 text-white hover:bg-zinc-900" 
+                : "border-zinc-200 text-black hover:bg-zinc-100"
+            }`}
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {userBookings.length > 0 && (
+            <button
+              onClick={() => setShowMyBookings(true)}
+              className={`px-4 py-2 text-xs border uppercase tracking-widest font-mono transition-all rounded cursor-pointer relative ${
+                isDarkMode 
+                  ? "border-zinc-800 text-white hover:bg-zinc-900" 
+                  : "border-zinc-200 text-black hover:bg-zinc-100"
+              }`}
+            >
+              My Memos ({userBookings.length})
+              <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full animate-ping ${isDarkMode ? "bg-white" : "bg-black"}`} />
+            </button>
+          )}
+          <button
+            onClick={() => scrollToSection("booking-engine")}
+            className="font-bold uppercase tracking-widest text-xs px-6 py-3 rounded shadow-lg cursor-pointer bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/15 transition-all duration-300"
+          >
+            Reserve Sanctuary
+          </button>
+        </div>
+
+        {/* Mobile menu toggle & Theme toggle */}
+        <div className="lg:hidden flex items-center space-x-3">
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className={`p-2 rounded border transition-all cursor-pointer ${
+              isDarkMode 
+                ? "border-zinc-800 text-white hover:bg-zinc-900" 
+                : "border-zinc-200 text-black hover:bg-zinc-100"
+            }`}
+          >
+            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {userBookings.length > 0 && (
+            <button
+              onClick={() => setShowMyBookings(true)}
+              className={`p-2 border rounded cursor-pointer ${
+                isDarkMode 
+                  ? "border-zinc-800 text-white hover:bg-zinc-900" 
+                  : "border-zinc-200 text-black hover:bg-zinc-100"
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`p-2 transition-colors rounded cursor-pointer ${isDarkMode ? "hover:bg-zinc-900 text-white" : "hover:bg-zinc-100 text-black"}`}
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile nav Drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className={`lg:hidden border-b px-6 py-6 space-y-4 text-xs uppercase tracking-widest relative z-30 transition-colors duration-500 ${
+              isDarkMode ? "bg-zinc-950 border-zinc-900 text-white" : "bg-zinc-50 border-zinc-200 text-black"
+            }`}
+          >
+            <button onClick={() => scrollToSection("home")} className={`block w-full text-left py-2 border-b hover:font-bold ${isDarkMode ? "border-zinc-900 hover:text-white" : "border-zinc-100 hover:text-black"}`}>The Sanctuary</button>
+            <button onClick={() => scrollToSection("accommodations")} className={`block w-full text-left py-2 border-b hover:font-bold ${isDarkMode ? "border-zinc-900 hover:text-white" : "border-zinc-100 hover:text-black"}`}>Suites & Accommodations</button>
+            <button onClick={() => scrollToSection("amenities")} className={`block w-full text-left py-2 border-b hover:font-bold ${isDarkMode ? "border-zinc-900 hover:text-white" : "border-zinc-100 hover:text-black"}`}>Attention To Detail</button>
+            <button onClick={() => scrollToSection("culinary")} className={`block w-full text-left py-2 border-b hover:font-bold ${isDarkMode ? "border-zinc-900 hover:text-white" : "border-zinc-100 hover:text-black"}`}>Dining & Lounge</button>
+            <button onClick={() => scrollToSection("tradition")} className={`block w-full text-left py-2 border-b hover:font-bold ${isDarkMode ? "border-zinc-900 hover:text-white" : "border-zinc-100 hover:text-black"}`}>Taste of Tradition</button>
+            <button onClick={() => scrollToSection("faq")} className={`block w-full text-left py-2 border-b hover:font-bold ${isDarkMode ? "border-zinc-900 hover:text-white" : "border-zinc-100 hover:text-black"}`}>Stay FAQ</button>
+            
+            <div className="pt-2 flex flex-col gap-3">
+              <button
+                onClick={() => { scrollToSection("booking-engine"); setMobileMenuOpen(false); }}
+                className="w-full text-center font-bold uppercase tracking-widest py-3 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-300"
+              >
+                Reserve Room
+              </button>
+              <a
+                href="tel:+251911424085"
+                className={`w-full border text-center font-bold uppercase tracking-widest py-3 rounded flex items-center justify-center gap-2 transition-all ${
+                  isDarkMode ? "border-zinc-800 text-white hover:bg-zinc-900/40" : "border-zinc-200 text-black hover:bg-zinc-100"
+                }`}
+              >
+                <Phone className="w-4 h-4" /> Call +251 91 142 4085
+              </a>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 1. HERO SECTION (Redesigned with Curved-Corner Tablet Dashboard layout) */}
+      <section 
+        id="home" 
+        className={`px-4 md:px-8 py-6 md:py-10 transition-colors duration-500 ${
+          isDarkMode ? "bg-zinc-950" : "bg-[#f2f0ec]"
+        }`}
+      >
+        <div className={`relative w-full h-[88vh] min-h-[640px] md:h-[820px] rounded-[2.5rem] border-[10px] md:border-[16px] shadow-2xl overflow-hidden cursor-default transition-all duration-500 ${
+          isDarkMode ? "border-zinc-900 shadow-black/80" : "border-white shadow-zinc-400/30"
+        }`}>
+          {/* Cinematic Backdrop Image */}
+          <div className="absolute inset-0 z-0">
+            <img
+              src="https://res.cloudinary.com/lshk4vru/image/upload/v1783355459/1.8_krne3k.jpg"
+              className="w-full h-full object-cover scale-105"
+              alt="Yegof View Cinematic mountain luxury exterior"
+            />
+            {/* Gradient Overlays to preserve absolute text legibility */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/30 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent"></div>
+          </div>
+
+          {/* Top Bar Navigation Widget (Matches the Search Pill in the screenshot) */}
+          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 hidden lg:flex items-center gap-2 bg-white/95 backdrop-blur-md px-5 py-2.5 rounded-full shadow-xl border border-white/20 z-20 text-xs">
+            <button 
+              onClick={() => scrollToSection("booking-engine")}
+              className="bg-blue-600 text-white font-bold px-4 py-2 rounded-full flex items-center gap-1.5 shadow-md hover:bg-blue-700 transition-all cursor-pointer"
+            >
+              <span>Reserve Stay</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-6 bg-zinc-200"></div>
+
+            <div className="flex flex-col px-3 text-left">
+              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                <MapPin className="w-2.5 h-2.5 text-blue-500" /> Location
+              </span>
+              <span className="font-semibold text-zinc-800 flex items-center gap-1">
+                Kombolcha, ET <ChevronDown className="w-3 h-3 text-zinc-400" />
+              </span>
+            </div>
+
+            <div className="w-px h-6 bg-zinc-200"></div>
+
+            <div className="flex flex-col px-3 text-left">
+              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Sanctuary Stay</span>
+              <span className="font-semibold text-zinc-800 flex items-center gap-1">
+                Mountain King <ChevronDown className="w-3 h-3 text-zinc-400" />
+              </span>
+            </div>
+
+            <div className="w-px h-6 bg-zinc-200"></div>
+
+            <div className="flex flex-col px-3 text-left">
+              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Best Rates</span>
+              <span className="font-semibold text-zinc-800 flex items-center gap-1">
+                $140 - $190/nt <ChevronDown className="w-3 h-3 text-zinc-400" />
+              </span>
+            </div>
+
+            <div className="w-px h-6 bg-zinc-200"></div>
+
+            <a 
+              href="tel:+251911424085"
+              className="bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-bold px-4 py-2 rounded-full transition-colors cursor-pointer"
+            >
+              Call Concierge
+            </a>
+          </div>
+
+          {/* Left Controls Dock (Vertical Side Pill Matches screenshot) */}
+          <div className="absolute left-6 top-1/2 transform -translate-y-1/2 hidden lg:flex flex-col items-center justify-between h-[75%] w-14 bg-white/95 backdrop-blur-md py-6 rounded-full shadow-2xl border border-white/30 z-20">
+            {/* Active Home Indicator */}
+            <button 
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 hover:scale-105 transition-all cursor-pointer"
+              title="Home Sanctuary"
+            >
+              <Compass className="w-5 h-5 animate-spin-slow" />
+            </button>
+
+            {/* Middle Nav Sections */}
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => scrollToSection("accommodations")} 
+                className="w-10 h-10 rounded-full text-zinc-600 hover:text-blue-600 hover:bg-zinc-100 flex items-center justify-center transition-all cursor-pointer" 
+                title="Suites & Comfort"
+              >
+                <Grid className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => scrollToSection("culinary")} 
+                className="w-10 h-10 rounded-full text-zinc-600 hover:text-blue-600 hover:bg-zinc-100 flex items-center justify-center transition-all cursor-pointer" 
+                title="Dining & Lounge"
+              >
+                <Utensils className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => scrollToSection("reviews")} 
+                className="w-10 h-10 rounded-full text-zinc-600 hover:text-blue-600 hover:bg-zinc-100 flex items-center justify-center transition-all cursor-pointer" 
+                title="Rooftop Suggestions"
+              >
+                <Coffee className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => scrollToSection("location")} 
+                className="w-10 h-10 rounded-full text-zinc-600 hover:text-blue-600 hover:bg-zinc-100 flex items-center justify-center transition-all cursor-pointer" 
+                title="Mountain Location"
+              >
+                <MapPin className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => scrollToSection("booking-engine")} 
+                className="w-10 h-10 rounded-full text-zinc-600 hover:text-blue-600 hover:bg-zinc-100 flex items-center justify-center transition-all cursor-pointer animate-pulse" 
+                title="Book Online Suite"
+              >
+                <Calendar className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Bottom Section containing Settings & Theme Toggle */}
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="w-8 h-px bg-zinc-200/60 my-1"></div>
+              
+              <button 
+                onClick={() => setIsDarkMode(false)} 
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                  !isDarkMode ? "bg-zinc-100 text-amber-500 scale-110" : "text-zinc-400 hover:text-zinc-600"
+                }`} 
+                title="Light Mode"
+              >
+                <Sun className="w-4 h-4" />
+              </button>
+              
+              <button 
+                onClick={() => setIsDarkMode(true)} 
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                  isDarkMode ? "bg-zinc-900 text-blue-400 scale-110" : "text-zinc-400 hover:text-zinc-600"
+                }`} 
+                title="Dark Mode"
+              >
+                <Moon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Central Main Display Typography Overlay */}
+          <div className="absolute left-6 lg:left-24 top-[15%] md:top-[18%] lg:top-[20%] max-w-md md:max-w-lg px-6 md:px-0 z-10 flex flex-col gap-3.5">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="inline-flex items-center gap-2 border border-white/10 px-3 py-1 rounded-full text-[9px] font-mono tracking-widest uppercase bg-black/45 backdrop-blur-md text-sky-300 w-fit"
+            >
+              <Compass className="w-3 h-3 animate-spin-slow text-sky-300" />
+              <span>Sanctuary on Mt Yegof, Ethiopia</span>
+            </motion.div>
+ 
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.15 }}
+              className="text-white text-4xl sm:text-5xl md:text-6xl font-sans font-light tracking-tight leading-[1.05] uppercase text-left"
+            >
+              New Way Of <br />
+              <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-sky-200 via-indigo-200 to-white">
+                Living
+              </span>
+            </motion.h1>
+ 
+            <motion.p
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="text-zinc-300 text-[11px] sm:text-xs md:text-sm font-light max-w-sm sm:max-w-md leading-relaxed font-sans text-left"
+            >
+              Discover extraordinary luxury available for reservation. Whether seeking a dream getaway overlooking Mount Yegof peaks or a highly secure modern sanctuary, our refined suites offer the most exceptional stays.
+            </motion.p>
+
+            {/* Call to action for Mobile/Tablet users who don't have hover cards */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.45 }}
+              className="flex items-center gap-3 lg:hidden mt-2"
+            >
+              <button
+                onClick={() => scrollToSection("booking-engine")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-widest px-5 py-3 rounded-full shadow-lg cursor-pointer"
+              >
+                Reserve Now
+              </button>
+              <a
+                href="tel:+251911424085"
+                className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-widest px-5 py-3 rounded-full backdrop-blur-sm transition-all flex items-center gap-1.5"
+              >
+                <Phone className="w-3.5 h-3.5" /> Call Concierge
+              </a>
+            </motion.div>
+          </div>
+
+          {/* Bottom-Left Floating White Card (Matches screenshot layout) */}
+          <div className="absolute bottom-6 left-6 lg:left-24 bg-white text-zinc-900 p-5 rounded-[2.2rem] shadow-2xl max-w-xs z-20 hidden md:block border border-white/50 transition-all hover:scale-[1.02] duration-300">
+            <h4 className="font-sans font-bold text-xs text-zinc-800 tracking-tight">Find The Perfect Suite</h4>
+            <p className="text-zinc-500 text-[10px] leading-relaxed mt-1.5 font-normal">
+              Our booking platform connects you with the most pristine, premium mountain sanctuaries in Kombolcha. Start your modern journey today.
+            </p>
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-zinc-100">
+              <div>
+                <span className="block font-sans font-bold text-base text-zinc-900 leading-none">100%</span>
+                <span className="text-[8px] text-zinc-400 uppercase tracking-wider font-semibold font-mono">Verified Stay</span>
+              </div>
+              
+              {/* Overlapping Guest Avatars & Action Link Icon */}
+              <div className="flex items-center -space-x-2.5 overflow-hidden">
+                <img className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop" alt="Guest" />
+                <img className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop" alt="Guest" />
+                <img className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&fit=crop" alt="Guest" />
+                <button 
+                  onClick={() => scrollToSection("accommodations")}
+                  className="w-6 h-6 rounded-full bg-zinc-900 hover:bg-blue-600 text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
+                  title="Browse Accommodations"
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom-Right Floating Glassmorphic Card (Matches screenshot layout) */}
+          <div className="absolute bottom-6 right-6 backdrop-blur-md bg-black/40 text-white p-5 rounded-[2.2rem] shadow-2xl max-w-sm z-20 border border-white/10 hidden sm:block transition-all hover:scale-[1.02] duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-sans font-semibold text-sm text-white tracking-tight">Yegof Ridge Sanctuary</h3>
+                <p className="text-zinc-300 text-[9px] flex items-center gap-1 mt-1 font-mono">
+                  <MapPin className="w-3 h-3 text-sky-400" /> Mt Yegof Peak Trailhead, Wollo
+                </p>
+              </div>
+              <button 
+                onClick={() => scrollToSection("booking-engine")}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-blue-600 text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
+                title="Book This Suite"
+              >
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-zinc-200 text-[11px] font-light leading-relaxed mt-3">
+              This majestic mountain hotel blends seamlessly into the stunning high-altitude scenery, offering custom premium suites, dependable hot water, and blazing-fast fiber internet.
+            </p>
+
+            {/* Quick specifications of the hotel */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 pt-2.5 border-t border-white/10 text-[9.5px] text-zinc-300 font-sans">
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                <span>Modern 48m²-62m² Suites</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                <span>100% Dependable Hot Showers</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                <span>Blazing-Fast Fiber Wi-Fi</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                <span>Rooftop Grill & Lounge</span>
+              </div>
+            </div>
+
+            {/* Interactive Row with Stats & Circle Initial Logo Button */}
+            <div className="flex items-center justify-between mt-4 pt-2.5 border-t border-white/10">
+              <div className="flex items-center gap-3.5 text-xs text-zinc-300">
+                <button className="flex items-center gap-1 hover:text-rose-400 transition-colors cursor-pointer">
+                  <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                  <span className="font-mono text-[9px]">4.4K</span>
+                </button>
+                <button className="flex items-center gap-1 hover:text-sky-400 transition-colors cursor-pointer">
+                  <Bookmark className="w-3.5 h-3.5 text-sky-400 fill-sky-400" />
+                  <span className="font-mono text-[9px]">157</span>
+                </button>
+                <button className="hover:text-white transition-colors cursor-pointer">
+                  <Share2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* White/indigo themed circular letter badge mimicking "U" logo in image */}
+              <div className="w-9 h-9 rounded-full bg-indigo-950 border border-white/15 flex items-center justify-center text-white font-serif font-black tracking-wide text-xs shadow-inner shadow-white/10">
+                Y
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* QUICK STATS / HIGHLIGHTS RIBBON */}
+      <section className={`border-y py-8 relative z-10 transition-colors duration-500 ${
+        isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+      }`}>
+        <div className="max-w-7xl mx-auto px-6 sm:px-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="text-center space-y-1">
+            <span className={`block font-serif text-3xl font-bold ${isDarkMode ? "text-white" : "text-black"}`}>100%</span>
+            <span className={`block text-[10px] uppercase tracking-widest font-mono ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Dependable Hot Showers</span>
+          </div>
+          <div className="text-center space-y-1">
+            <span className={`block font-serif text-3xl font-bold ${isDarkMode ? "text-white" : "text-black"}`}>Ultra</span>
+            <span className={`block text-[10px] uppercase tracking-widest font-mono ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Blazing-Fast Wi-Fi Connection</span>
+          </div>
+          <div className="text-center space-y-1">
+            <span className={`block font-serif text-3xl font-bold ${isDarkMode ? "text-white" : "text-black"}`}>Top</span>
+            <span className={`block text-[10px] uppercase tracking-widest font-mono ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Notch Rooftop Culinary Reviews</span>
+          </div>
+          <div className="text-center space-y-1">
+            <span className={`block font-serif text-3xl font-bold ${isDarkMode ? "text-white" : "text-black"}`}>Quiet</span>
+            <span className={`block text-[10px] uppercase tracking-widest font-mono ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Spacious Mountain Sanctuaries</span>
+          </div>
+        </div>
+      </section>
+
+      {/* DYNAMIC RESERVATION WIDGET */}
+      <section id="booking-engine" className={`py-12 transition-colors duration-500 ${isDarkMode ? "bg-black" : "bg-white"}`}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div className={`rounded-2xl border shadow-2xl overflow-hidden relative transition-all duration-500 ${
+            isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+          }`}>
+            
+            <div className="p-8 sm:p-12 relative z-10">
+              <div className="text-center space-y-3 mb-10">
+                <span className={`text-xs uppercase tracking-[0.3em] font-mono font-bold ${isDarkMode ? "text-white" : "text-black"}`}>Interactive Booking Engine</span>
+                <h2 className={`font-serif text-3xl sm:text-4xl uppercase tracking-wider ${isDarkMode ? "text-white" : "text-black"}`}>Select Your Sanctuary</h2>
+                <div className={`w-24 h-0.5 mx-auto mt-2 ${isDarkMode ? "bg-white" : "bg-black"}`} />
+                <p className={`text-sm font-serif italic max-w-xl mx-auto ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                  Customize your dates, guest requirements, and view real-time estimates instantly. Your booking code registers directly in our local manager database.
+                </p>
+              </div>
+
+              <form onSubmit={handleCreateBooking} className="space-y-8">
+                {/* Steps Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  
+                  {/* Step 1: Room Category */}
+                  <div className="space-y-2">
+                    <label className={`block text-xs uppercase tracking-widest font-mono font-semibold ${isDarkMode ? "text-white" : "text-black"}`}>1. Select Luxury Suite</label>
+                    <div className="relative">
+                      <select
+                        value={selectedRoomId}
+                        onChange={(e) => setSelectedRoomId(e.target.value)}
+                        className={`w-full p-4 rounded text-sm focus:outline-none transition-all appearance-none cursor-pointer border ${
+                          isDarkMode 
+                            ? "bg-black border-zinc-800 text-white focus:border-white" 
+                            : "bg-white border-zinc-200 text-black focus:border-black"
+                        }`}
+                      >
+                        {ROOM_CATEGORIES.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} — ${r.rate}/night
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className={`absolute right-4 top-4 w-4 h-4 pointer-events-none ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`} />
+                    </div>
+                    <span className={`block text-[10.5px] italic mt-1 font-serif ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>
+                      Includes: {currentSelectedRoom.amenities.slice(0, 3).join(", ")}
+                    </span>
+                  </div>
+
+                  {/* Step 2: Date Selector */}
+                  <div className="space-y-2">
+                    <label className={`block text-xs uppercase tracking-widest font-mono font-semibold ${isDarkMode ? "text-white" : "text-black"}`}>2. Stay Dates</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className={`block text-[9px] uppercase tracking-wider mb-1 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Check In</span>
+                        <input
+                          type="date"
+                          value={checkIn}
+                          onChange={(e) => setCheckIn(e.target.value)}
+                          min="2026-07-06"
+                          className={`w-full p-3 rounded text-xs focus:outline-none border ${
+                            isDarkMode 
+                              ? "bg-black border-zinc-800 text-white focus:border-white" 
+                              : "bg-white border-zinc-200 text-black focus:border-black"
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <span className={`block text-[9px] uppercase tracking-wider mb-1 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Check Out</span>
+                        <input
+                          type="date"
+                          value={checkOut}
+                          onChange={(e) => setCheckOut(e.target.value)}
+                          min={checkIn}
+                          className={`w-full p-3 rounded text-xs focus:outline-none border ${
+                            isDarkMode 
+                              ? "bg-black border-zinc-800 text-white focus:border-white" 
+                              : "bg-white border-zinc-200 text-black focus:border-black"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                    <span className={`block text-[10.5px] mt-1 font-mono ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>
+                      Stay Duration: <span className={`font-bold ${isDarkMode ? "text-white" : "text-black"}`}>{totalNights}</span> night(s)
+                    </span>
+                  </div>
+
+                  {/* Step 3: Occupants */}
+                  <div className="space-y-2">
+                    <label className={`block text-xs uppercase tracking-widest font-mono font-semibold ${isDarkMode ? "text-white" : "text-black"}`}>3. Occupants</label>
+                    <div className={`flex items-center justify-between border rounded p-3.5 transition-colors duration-500 ${
+                      isDarkMode ? "border-zinc-800 bg-black/60" : "border-zinc-200 bg-white/60"
+                    }`}>
+                      <span className={`text-xs ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>Guests Limit</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setGuests(Math.max(1, guests - 1))}
+                          className={`w-8 h-8 rounded border flex items-center justify-center text-xs transition-colors cursor-pointer ${
+                            isDarkMode ? "border-zinc-800 hover:border-white text-white" : "border-zinc-200 hover:border-black text-black"
+                          }`}
+                        >
+                          -
+                        </button>
+                        <span className={`text-sm font-bold font-mono w-4 text-center ${isDarkMode ? "text-white" : "text-black"}`}>{guests}</span>
+                        <button
+                          type="button"
+                          onClick={() => setGuests(Math.min(4, guests + 1))}
+                          className={`w-8 h-8 rounded border flex items-center justify-center text-xs transition-colors cursor-pointer ${
+                            isDarkMode ? "border-zinc-800 hover:border-white text-white" : "border-zinc-200 hover:border-black text-black"
+                          }`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <span className={`block text-[10px] italic mt-1 font-serif ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>
+                      *Additional surcharge applies for over 2 guests
+                    </span>
+                  </div>
+
+                </div>
+
+                {/* Pricing summary widget */}
+                <div className={`p-6 rounded-xl border grid grid-cols-1 md:grid-cols-3 gap-6 items-center transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                }`}>
+                  <div className="space-y-1">
+                    <span className={`block text-[10px] uppercase tracking-widest font-mono ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Sanctuary Cost Calculation</span>
+                    <p className={`text-xs ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>
+                      {currentSelectedRoom.name} x {totalNights} Night(s)
+                    </p>
+                    {guests > 2 && <span className={`text-[10px] italic block font-bold ${isDarkMode ? "text-zinc-400" : "text-zinc-500"}`}>*Occupancy fee added</span>}
+                  </div>
+                  <div className="text-left md:text-center">
+                    <span className={`block text-[10px] uppercase tracking-widest font-mono ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Real-Time Est. Total</span>
+                    <span className={`text-3xl font-serif font-bold ${isDarkMode ? "text-white" : "text-black"}`}>${estimatedTotalPrice} <span className="text-xs font-sans uppercase opacity-60">USD</span></span>
+                  </div>
+                  <div className={`text-left md:text-right text-[11px] leading-relaxed font-serif italic ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>
+                    All reservation requests register instantaneously. A direct call check determines final room readiness prior to arrival.
+                  </div>
+                </div>
+
+                {/* Personal Information */}
+                <div className={`space-y-4 pt-4 border-t ${isDarkMode ? "border-zinc-900" : "border-zinc-150"}`}>
+                  <h3 className={`text-sm font-serif uppercase tracking-wider ${isDarkMode ? "text-white" : "text-black"}`}>4. Guest Information & Special Requests</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className={`block text-[10px] uppercase tracking-wider ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>Your Full Name</span>
+                      <input
+                        type="text"
+                        required
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="e.g. Dr. Lesly Davis"
+                        className={`w-full p-3 rounded text-sm focus:outline-none transition-all border ${
+                          isDarkMode 
+                            ? "bg-black border-zinc-800 text-white focus:border-white" 
+                            : "bg-white border-zinc-200 text-black focus:border-black"
+                        }`}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className={`block text-[10px] uppercase tracking-wider ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>Direct Contact Phone Number</span>
+                      <input
+                        type="tel"
+                        required
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="e.g. +251 91 142 4085"
+                        className={`w-full p-3 rounded text-sm focus:outline-none transition-all border ${
+                          isDarkMode 
+                            ? "bg-black border-zinc-800 text-white focus:border-white" 
+                            : "bg-white border-zinc-200 text-black focus:border-black"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className={`block text-[10px] uppercase tracking-wider ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>Special Dietary, Accessibility, or Arrival Requests</span>
+                    <textarea
+                      value={specialRequests}
+                      onChange={(e) => setSpecialRequests(e.target.value)}
+                      placeholder="e.g. Vegetarian breakfast options, early morning check-in requested"
+                      rows={2}
+                      className={`w-full p-3 rounded text-sm focus:outline-none transition-all border ${
+                        isDarkMode 
+                          ? "bg-black border-zinc-800 text-white focus:border-white" 
+                          : "bg-white border-zinc-200 text-black focus:border-black"
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Book Action Button */}
+                <div className="text-center pt-2">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-12 py-4 font-bold uppercase tracking-widest text-sm rounded-lg shadow-xl cursor-pointer bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/15 transition-all duration-300"
+                  >
+                    Submit Booking Memo
+                  </button>
+                  <p className={`text-[10px] mt-2 font-serif italic ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>
+                    *Upon submitting, we will queue your sanctuary spot instantly. Direct confirmation on arrival or phone check follows.
+                  </p>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. THE ACCOMMODATIONS: AN OASIS OF REST */}
+      <section id="accommodations" className={`py-24 border-t transition-colors duration-500 ${
+        isDarkMode ? "bg-black border-zinc-900" : "bg-white border-zinc-150"
+      }`}>
+        <div className="max-w-7xl mx-auto px-6 sm:px-12 space-y-16">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <span className={`text-xs uppercase tracking-[0.3em] font-mono font-bold transition-colors duration-500 ${
+                isDarkMode ? "text-zinc-400" : "text-zinc-650"
+              }`}>Exquisite Rooms</span>
+              <h2 className={`font-serif text-4xl sm:text-5xl uppercase tracking-wider transition-colors duration-500 ${
+                isDarkMode ? "text-white" : "text-black"
+              }`}>Uncompromising Sanctuary</h2>
+              <p className={`text-base font-serif italic transition-colors duration-500 ${
+                isDarkMode ? "text-zinc-400" : "text-zinc-650"
+              }`}>
+                Remarkably quiet, spacious, and impeccably clean rooms designed for deep relaxation in Northern Ethiopia.
+              </p>
+            </div>
+            
+            {/* Room category buttons */}
+            <div className={`flex flex-wrap gap-2 border-b pb-2 transition-colors duration-500 ${
+              isDarkMode ? "border-zinc-800" : "border-zinc-200"
+            }`}>
+              {ROOM_CATEGORIES.map((room, index) => (
+                <button
+                  key={room.id}
+                  onClick={() => {
+                    setActiveRoomIndex(index);
+                    setActiveRoomImageIndex(0);
+                  }}
+                  className={`px-4 py-2.5 text-xs font-serif uppercase tracking-wider transition-all cursor-pointer ${
+                    activeRoomIndex === index
+                      ? (isDarkMode ? "text-white border-b-2 border-white font-semibold" : "text-black border-b-2 border-black font-semibold")
+                      : (isDarkMode ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-black")
+                  }`}
+                >
+                  {room.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Active room view grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Col: Interactive Image Gallery (Span 7) */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className={`relative h-[480px] rounded-lg overflow-hidden border group transition-all duration-500 ${
+                isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+              }`}>
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={activeRoomImageIndex}
+                    src={ROOM_CATEGORIES[activeRoomIndex].images[activeRoomImageIndex]}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="w-full h-full object-cover"
+                    alt={`${ROOM_CATEGORIES[activeRoomIndex].name} viewing angle`}
+                  />
+                </AnimatePresence>
+                
+                {/* Dots indicator overlays */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-black/45 backdrop-blur-sm px-3.5 py-2 rounded-full border border-white/10 z-10 transition-all duration-500">
+                  {ROOM_CATEGORIES[activeRoomIndex].images.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveRoomImageIndex(idx)}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                        activeRoomImageIndex === idx 
+                          ? "bg-white scale-125 ring-2 ring-white/20" 
+                          : "bg-white/40 hover:bg-white/80"
+                      }`}
+                      title={`View Angle ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+
+                {/* Overlay details icon */}
+                <div className={`absolute top-4 right-4 backdrop-blur-md px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded border transition-colors duration-500 ${
+                  isDarkMode ? "bg-black/80 border-zinc-800 text-zinc-300" : "bg-white/90 border-zinc-200 text-zinc-700"
+                }`}>
+                  {ROOM_CATEGORIES[activeRoomIndex].size} Room Canvas
+                </div>
+              </div>
+
+              {/* Thumbnails row */}
+              <div className="grid grid-cols-3 gap-3">
+                {ROOM_CATEGORIES[activeRoomIndex].images.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveRoomImageIndex(idx)}
+                    className={`h-24 rounded overflow-hidden border transition-all cursor-pointer relative ${
+                      activeRoomImageIndex === idx 
+                        ? (isDarkMode ? "border-white scale-[1.02]" : "border-black scale-[1.02]") 
+                        : (isDarkMode ? "border-zinc-900 opacity-60 hover:opacity-100" : "border-zinc-200 opacity-60 hover:opacity-100")
+                    }`}
+                  >
+                    <img src={imgUrl} className="w-full h-full object-cover" alt="angle thumbnail" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Col: Luxurious highlights (Span 5) */}
+            <div className="lg:col-span-5 space-y-8">
+              <div className="space-y-4">
+                <span className={`text-[11px] font-mono tracking-widest uppercase block transition-colors duration-500 ${
+                  isDarkMode ? "text-zinc-400" : "text-zinc-500"
+                }`}>Accommodations Detail</span>
+                <h3 className={`font-serif text-3xl font-bold uppercase tracking-wide transition-colors duration-500 ${
+                  isDarkMode ? "text-white" : "text-black"
+                }`}>{ROOM_CATEGORIES[activeRoomIndex].name}</h3>
+                <p className={`font-serif leading-relaxed italic transition-colors duration-500 ${
+                  isDarkMode ? "text-zinc-350" : "text-zinc-650"
+                }`}>{ROOM_CATEGORIES[activeRoomIndex].description}</p>
+              </div>
+
+              {/* Custom features checkmarks */}
+              <div className={`border p-6 rounded transition-colors duration-500 ${
+                isDarkMode ? "bg-zinc-900/40 border-zinc-850" : "bg-zinc-50/50 border-zinc-200"
+              }`}>
+                <h4 className={`text-xs uppercase tracking-wider font-mono font-bold mb-4 transition-colors duration-500 ${
+                  isDarkMode ? "text-white" : "text-black"
+                }`}>Included Premium Perks</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <span className={`flex items-center gap-2.5 text-xs transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-350" : "text-zinc-750"
+                  }`}>
+                    <Check className={`w-4 h-4 shrink-0 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                    Premium Bedding Sleep
+                  </span>
+                  <span className={`flex items-center gap-2.5 text-xs transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-350" : "text-zinc-750"
+                  }`}>
+                    <Check className={`w-4 h-4 shrink-0 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                    Spacious Layout windows
+                  </span>
+                  {ROOM_CATEGORIES[activeRoomIndex].amenities.map((item, idx) => (
+                    <span key={idx} className={`flex items-center gap-2.5 text-xs transition-colors duration-500 ${
+                      isDarkMode ? "text-zinc-350" : "text-zinc-750"
+                    }`}>
+                      <Check className={`w-4 h-4 shrink-0 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Booking Trigger info */}
+              <div className="pt-2 flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => {
+                    setSelectedRoomId(ROOM_CATEGORIES[activeRoomIndex].id);
+                    scrollToSection("booking-engine");
+                  }}
+                  className={`px-6 py-4 font-bold uppercase tracking-widest text-xs rounded text-center transition-all cursor-pointer ${
+                    isDarkMode 
+                      ? "bg-white hover:bg-zinc-200 text-black shadow-lg shadow-white/5" 
+                      : "bg-black hover:bg-zinc-800 text-white shadow-lg shadow-black/5"
+                  }`}
+                >
+                  Book Category (${ROOM_CATEGORIES[activeRoomIndex].rate}/night)
+                </button>
+                <a
+                  href="tel:+251911424085"
+                  className={`px-6 py-4 border font-bold uppercase tracking-widest text-xs rounded text-center flex items-center justify-center gap-2 transition-all ${
+                    isDarkMode 
+                      ? "border-zinc-800 text-white hover:bg-zinc-900/30" 
+                      : "border-zinc-200 text-black hover:bg-zinc-100/30"
+                  }`}
+                >
+                  <Phone className={`w-4 h-4 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} /> Call To Secure
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. BATHROOM & AMENITIES: ATTENTION TO DETAIL */}
+      <section id="amenities" className={`py-24 border-y transition-colors duration-500 ${
+        isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+      }`}>
+        <div className="max-w-7xl mx-auto px-6 sm:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            {/* Left Side: Detail Text List */}
+            <div className="lg:col-span-5 space-y-8 order-2 lg:order-1">
+              <div className="space-y-3">
+                <span className={`text-xs uppercase tracking-[0.3em] font-mono transition-colors duration-500 ${
+                  isDarkMode ? "text-zinc-400" : "text-zinc-500"
+                }`}>Modern Convenience</span>
+                <h2 className={`font-serif text-4xl uppercase tracking-wider transition-colors duration-500 ${
+                  isDarkMode ? "text-white" : "text-black"
+                }`}>Modern Comforts, Refined</h2>
+                <div className={`w-20 h-0.5 ${isDarkMode ? "bg-white" : "bg-black"}`} />
+                <p className={`text-sm font-serif italic leading-relaxed transition-colors duration-500 ${
+                  isDarkMode ? "text-zinc-400" : "text-zinc-650"
+                }`}>
+                  We understand that a luxury stay rests on the reliable performance of essential utilities. No compromises.
+                </p>
+              </div>
+
+              {/* Perks Grid blocks */}
+              <div className="space-y-6">
+                
+                {/* Shower block */}
+                <div className={`flex gap-4 p-4 rounded border transition-colors duration-500 ${
+                  isDarkMode ? "bg-black border-zinc-900" : "bg-white border-zinc-200"
+                }`}>
+                  <div className={`p-3 rounded border self-start transition-colors duration-500 ${
+                    isDarkMode ? "bg-zinc-900 border-zinc-800 text-white" : "bg-zinc-100 border-zinc-200 text-black"
+                  }`}>
+                    <Flame className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-sm font-serif font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Dependable Hot Showers Daily</h4>
+                    <p className={`text-xs leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                      Sustained hot water pressure under custom, clean, newly engineered modern shower nozzles. Perfect for refreshing after high-altitude mountain travel.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Wi-Fi block */}
+                <div className={`flex gap-4 p-4 rounded border transition-colors duration-500 ${
+                  isDarkMode ? "bg-black border-zinc-900" : "bg-white border-zinc-200"
+                }`}>
+                  <div className={`p-3 rounded border self-start transition-colors duration-500 ${
+                    isDarkMode ? "bg-zinc-900 border-zinc-800 text-white" : "bg-zinc-100 border-zinc-200 text-black"
+                  }`}>
+                    <Wifi className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-sm font-serif font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Blazing-Fast Internet & Wi-Fi</h4>
+                    <p className={`text-xs leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                      Complimentary high-speed connection configured to handle video meetings, research projects, and instant messaging from your cozy suites.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Access block */}
+                <div className={`flex gap-4 p-4 rounded border transition-colors duration-500 ${
+                  isDarkMode ? "bg-black border-zinc-900" : "bg-white border-zinc-200"
+                }`}>
+                  <div className={`p-3 rounded border self-start transition-colors duration-500 ${
+                    isDarkMode ? "bg-zinc-900 border-zinc-800 text-white" : "bg-zinc-100 border-zinc-200 text-black"
+                  }`}>
+                    <Accessibility className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-sm font-serif font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Wheelchair-Accessible Facilities</h4>
+                    <p className={`text-xs leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                      Spacious entries and custom access design structures ensure every volunteer, researcher, and traveler rests comfortably and securely.
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Right Side: Showcase Visuals (Span 7) */}
+            <div className="lg:col-span-7 space-y-4 order-1 lg:order-2">
+              <div className={`relative h-[500px] rounded-xl overflow-hidden border shadow-2xl transition-all duration-500 ${
+                isDarkMode ? "border-zinc-900" : "border-zinc-200"
+              }`}>
+                <img
+                  src="https://res.cloudinary.com/lshk4vru/image/upload/v1783355436/1.7_sun3bd.jpg"
+                  className="w-full h-full object-cover filter brightness-90 hover:brightness-100 transition-all duration-700"
+                  alt="Yegof View luxury clean bathroom detail"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                <div className="absolute bottom-6 left-6 right-6">
+                  <span className={`text-[10px] font-mono uppercase tracking-wider block transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-400" : "text-zinc-200"
+                  }`}>Spotless Sanitization</span>
+                  <h4 className={`text-lg font-serif font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Meticulous Sanitary Standards</h4>
+                  <p className={`text-xs font-serif italic leading-relaxed mt-1 transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-300" : "text-zinc-400"
+                  }`}>
+                    Spotless modern bathrooms, plush towels, and organic amenities await every arrival.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 4. CULINARY EXCELLENCE & BAR LOUNGE */}
+      <section id="culinary" className={`py-24 relative overflow-hidden transition-colors duration-500 ${
+        isDarkMode ? "bg-black" : "bg-white"
+      }`}>
+        {/* Decorative ambient background element */}
+        <div className={`absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full filter blur-[120px] pointer-events-none transition-colors duration-500 ${
+          isDarkMode ? "bg-white/5" : "bg-black/5"
+        }`} />
+        
+        <div className="max-w-7xl mx-auto px-6 sm:px-12 space-y-16 relative z-10">
+          
+          <div className="max-w-3xl space-y-3">
+            <span className={`text-xs uppercase tracking-[0.3em] font-mono font-bold transition-colors duration-500 ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-650"
+            }`}>Evening Gastronomy</span>
+            <h2 className={`font-serif text-4xl sm:text-5xl uppercase tracking-wider leading-tight transition-colors duration-500 ${
+              isDarkMode ? "text-white" : "text-black"
+            }`}>
+              A Culinary Destination Far Exceeding Expectations
+            </h2>
+            <p className={`text-base font-serif italic transition-colors duration-500 ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-650"
+            }`}>
+              Experience dining and drinks noted by international guests as absolute 'top-notch' options in the region.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left block (Span 7): Seductive bar visual */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className={`relative h-[460px] rounded-xl overflow-hidden border shadow-2xl group transition-colors duration-500 ${
+                isDarkMode ? "border-zinc-900" : "border-zinc-200"
+              }`}>
+                <img
+                  src="https://res.cloudinary.com/lshk4vru/image/upload/v1783355430/1.5_aofwrp.jpg"
+                  className="w-full h-full object-cover transition-transform duration-[8s] group-hover:scale-105"
+                  alt="Yegof View hotel cozy evening lounge and craft drinks"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                <div className="absolute bottom-6 left-6">
+                  <span className={`inline-block text-[9px] font-mono uppercase tracking-widest px-3 py-1 font-bold rounded mb-2 transition-colors duration-500 ${
+                    isDarkMode ? "bg-white text-black" : "bg-black text-white"
+                  }`}>
+                    Open To Guests & Residents
+                  </span>
+                  <p className="text-xs text-gray-300 font-serif italic max-w-md">
+                    "The atmospheric lighting and exquisite wood carvings make our evening lounge the ultimate sanctuary for relaxation."
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right block (Span 5): Seductive Grid */}
+            <div className="lg:col-span-5 space-y-6">
+              <span className={`text-[10px] font-mono uppercase tracking-wider block transition-colors duration-500 ${
+                isDarkMode ? "text-zinc-500" : "text-zinc-450"
+              }`}>Atmosphere & Accents</span>
+              
+              <div className="grid grid-cols-2 gap-4">
+                
+                {/* Feature 1 */}
+                <div className={`p-5 rounded border space-y-2 transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                }`}>
+                  <Flame className={`w-5 h-5 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                  <h4 className={`text-sm font-serif font-semibold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Cozy Fireplace</h4>
+                  <p className={`text-[11px] leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                    Unwind around real fire pits and crackling hearths during cooler mountain nights.
+                  </p>
+                </div>
+
+                {/* Feature 2 */}
+                <div className={`p-5 rounded border space-y-2 transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                }`}>
+                  <Compass className={`w-5 h-5 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                  <h4 className={`text-sm font-serif font-semibold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Rooftop Seating</h4>
+                  <p className={`text-[11px] leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                    Breathtaking 360-degree viewpoints overlooking Kombolcha and Mount Yegof peaks.
+                  </p>
+                </div>
+
+                {/* Feature 3 */}
+                <div className={`p-5 rounded border space-y-2 transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                }`}>
+                  <Music className={`w-5 h-5 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                  <h4 className={`text-sm font-serif font-semibold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Acoustic Tunes</h4>
+                  <p className={`text-[11px] leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                    Soft evening instrumentals to complement high-end intimate conversations.
+                  </p>
+                </div>
+
+                {/* Feature 4 */}
+                <div className={`p-5 rounded border space-y-2 transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                }`}>
+                  <Wine className={`w-5 h-5 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                  <h4 className={`text-sm font-serif font-semibold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Curated Drinks</h4>
+                  <p className={`text-[11px] leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                    Specialized selection of local beers, fine wines, and custom cocktail mixes.
+                  </p>
+                </div>
+
+                {/* Feature 5 */}
+                <div className={`p-5 rounded border space-y-2 transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                }`}>
+                  <Coffee className={`w-5 h-5 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                  <h4 className={`text-sm font-serif font-semibold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Traditional Coffee</h4>
+                  <p className={`text-[11px] leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                    Hand-roasted authentic Ethiopian beans prepared before your eyes with incense.
+                  </p>
+                </div>
+
+                {/* Feature 6 */}
+                <div className={`p-5 rounded border space-y-2 transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                }`}>
+                  <Utensils className={`w-5 h-5 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+                  <h4 className={`text-sm font-serif font-semibold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Halal Options</h4>
+                  <p className={`text-[11px] leading-relaxed font-serif transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                    Strict adherence to dietary custom prep options for our diverse clientele.
+                  </p>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 5. ROOFTOP DINING & SOCIAL PROOF */}
+      <section className={`py-24 border-y transition-colors duration-500 ${
+        isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+      }`}>
+        <div className="max-w-7xl mx-auto px-6 sm:px-12 space-y-16">
+          
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className={`text-xs uppercase tracking-[0.3em] font-mono transition-colors duration-500 ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-500"
+            }`}>Dine Above the Rest</span>
+            <h2 className={`font-serif text-4xl uppercase tracking-wider transition-colors duration-500 ${
+              isDarkMode ? "text-white" : "text-black"
+            }`}>Rooftop Dining & Social Proof</h2>
+            <div className={`w-20 h-0.5 mx-auto mt-2 transition-colors duration-500 ${isDarkMode ? "bg-white" : "bg-black"}`} />
+          </div>
+
+          {/* Social Proof image layouts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className={`relative h-[360px] rounded-lg overflow-hidden border shadow-xl group transition-colors duration-500 ${
+              isDarkMode ? "border-zinc-900" : "border-zinc-200"
+            }`}>
+              <img
+                src="https://res.cloudinary.com/lshk4vru/image/upload/v1783355420/1.2_fpmxmf.jpg"
+                className="w-full h-full object-cover filter brightness-90 group-hover:brightness-100 transition-all duration-700"
+                alt="Rooftop panoramic seating view"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+              <div className="absolute bottom-6 left-6">
+                <span className={`text-[10px] font-mono tracking-wider uppercase block transition-colors duration-500 ${
+                  isDarkMode ? "text-zinc-300" : "text-zinc-200"
+                }`}>Vista Point</span>
+                <h4 className="text-lg font-serif font-bold text-white">Elevated Panoramic Vibe</h4>
+              </div>
+            </div>
+
+            <div className={`relative h-[360px] rounded-lg overflow-hidden border shadow-xl group transition-colors duration-500 ${
+              isDarkMode ? "border-zinc-900" : "border-zinc-200"
+            }`}>
+              <img
+                src="https://res.cloudinary.com/lshk4vru/image/upload/v1783355424/1.0_yuwrrb.jpg"
+                className="w-full h-full object-cover filter brightness-90 group-hover:brightness-100 transition-all duration-700"
+                alt="Detailed gourmet food prep setup"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+              <div className="absolute bottom-6 left-6">
+                <span className={`text-[10px] font-mono tracking-wider uppercase block transition-colors duration-500 ${
+                  isDarkMode ? "text-zinc-300" : "text-zinc-200"
+                }`}>Gastronomy</span>
+                <h4 className="text-lg font-serif font-bold text-white">Exquisite Table Arrangement</h4>
+              </div>
+            </div>
+          </div>
+
+          {/* Verbatim Testimonials List + Live Interactive Review Form */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            
+            {/* Reviews list (Span 7) */}
+            <div className="lg:col-span-7 space-y-6">
+              <h3 className={`text-lg font-serif uppercase tracking-wider flex items-center gap-2 transition-colors duration-500 ${
+                isDarkMode ? "text-white" : "text-black"
+              }`}>
+                <Star className={`w-4 h-4 transition-colors duration-500 ${
+                  isDarkMode ? "text-white fill-white" : "text-black fill-black"
+                }`} />
+                Verbatim Guest Testimonials
+              </h3>
+
+              <div className="space-y-4">
+                {reviews.map((rev) => (
+                  <div key={rev.id} className={`p-6 rounded border relative transition-colors duration-500 ${
+                    isDarkMode ? "bg-black border-zinc-900" : "bg-white border-zinc-200"
+                  }`}>
+                    <div className="absolute top-6 right-6 flex">
+                      {Array.from({ length: rev.rating }).map((_, i) => (
+                        <Star key={i} className={`w-3.5 h-3.5 transition-colors duration-500 ${
+                          isDarkMode ? "text-white fill-white" : "text-black fill-black"
+                        }`} />
+                      ))}
+                    </div>
+                    <div className="space-y-3">
+                      <p className={`text-sm font-serif italic leading-relaxed transition-colors duration-500 ${
+                        isDarkMode ? "text-zinc-300" : "text-zinc-700"
+                      }`}>
+                        "{rev.comment}"
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${isDarkMode ? "bg-white" : "bg-black"}`} />
+                        <span className={`text-xs font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>{rev.name}</span>
+                        <span className={`text-[10px] font-mono transition-colors duration-500 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>— {rev.role} ({rev.date})</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Guest Review Form (Span 5) */}
+            <div className={`lg:col-span-5 border p-6 sm:p-8 rounded-xl space-y-4 shadow-2xl transition-colors duration-500 ${
+              isDarkMode ? "bg-black border-zinc-900" : "bg-white border-zinc-200"
+            }`}>
+              <div className="space-y-1">
+                <h4 className={`text-sm font-serif uppercase tracking-wider transition-colors duration-500 ${
+                  isDarkMode ? "text-white" : "text-black"
+                }`}>Add Your Sanctuary Experience</h4>
+                <p className={`text-[11px] font-serif italic transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>
+                  Have you recently dined or stayed with us? Share your feedback instantly on our guest board.
+                </p>
+              </div>
+
+              <form onSubmit={handleAddReview} className="space-y-4">
+                <div className="space-y-1">
+                  <span className={`block text-[10px] uppercase tracking-wider transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>Your Name</span>
+                  <input
+                    type="text"
+                    required
+                    value={newReviewName}
+                    onChange={(e) => setNewReviewName(e.target.value)}
+                    placeholder="e.g. Antoinnette (Google Guide)"
+                    className={`w-full p-3 rounded text-xs focus:outline-none transition-all border ${
+                      isDarkMode 
+                        ? "bg-black border-zinc-800 text-white focus:border-white" 
+                        : "bg-white border-zinc-200 text-black focus:border-black"
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <span className={`block text-[10px] uppercase tracking-wider transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>Sanctuary Rating</span>
+                  <div className="flex items-center gap-1.5">
+                    {[1, 2, 3, 4, 5].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setNewReviewRating(val)}
+                        className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                      >
+                        <Star className={`w-5 h-5 transition-colors duration-500 ${
+                          val <= newReviewRating 
+                            ? (isDarkMode ? "text-white fill-white" : "text-black fill-black") 
+                            : "text-zinc-400"
+                        }`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className={`block text-[10px] uppercase tracking-wider transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>Review Comments</span>
+                  <textarea
+                    required
+                    value={newReviewComment}
+                    onChange={(e) => setNewReviewComment(e.target.value)}
+                    placeholder="We loved the spacious suites, clean beds, dependable hot showers, and gorgeous food!"
+                    rows={3}
+                    className={`w-full p-3 rounded text-xs focus:outline-none transition-all border ${
+                      isDarkMode 
+                        ? "bg-black border-zinc-800 text-white focus:border-white" 
+                        : "bg-white border-zinc-200 text-black focus:border-black"
+                    }`}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 font-bold uppercase tracking-widest text-[10px] rounded cursor-pointer bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/15 transition-all duration-300"
+                >
+                  Post Guest Review
+                </button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 6. AUTHENTIC ETHIOPIAN CUISINE SECTION */}
+      <section id="tradition" className={`py-24 relative overflow-hidden transition-colors duration-500 ${
+        isDarkMode ? "bg-black" : "bg-white"
+      }`}>
+        <div className="max-w-7xl mx-auto px-6 sm:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            {/* Visual presentation (Span 7) */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className={`relative h-[480px] rounded-xl overflow-hidden border shadow-2xl group transition-all duration-500 ${
+                isDarkMode ? "border-zinc-900" : "border-zinc-200"
+              }`}>
+                <img
+                  src="https://res.cloudinary.com/lshk4vru/image/upload/v1783355373/1.1_pxwa7t.jpg"
+                  className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-105"
+                  alt="Authentic traditional Ethiopian cuisine platter"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                <div className="absolute bottom-6 left-6">
+                  <span className={`text-[10px] font-mono uppercase tracking-wider block transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-300" : "text-zinc-200"
+                  }`}>Cultural Pride</span>
+                  <h3 className="text-xl font-serif font-bold text-white">Ethio Culinary Heritage</h3>
+                  <p className="text-xs text-gray-300 font-serif italic max-w-sm mt-1">
+                    Carefully fermented Injera, slow-simmered rich Wots, and fresh gourmet organic ingredients.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Descriptions (Span 5) */}
+            <div className="lg:col-span-5 space-y-6">
+              <span className={`text-xs uppercase tracking-[0.3em] font-mono font-bold block transition-colors duration-500 ${
+                isDarkMode ? "text-zinc-400" : "text-zinc-500"
+              }`}>Taste of Tradition</span>
+              <h2 className={`font-serif text-4xl uppercase tracking-wider transition-colors duration-500 ${
+                isDarkMode ? "text-white" : "text-black"
+              }`}>A Taste of Tradition</h2>
+              <div className={`w-20 h-0.5 ${isDarkMode ? "bg-white" : "bg-black"}`} />
+              <p className={`text-sm font-serif leading-relaxed italic transition-colors duration-500 ${
+                isDarkMode ? "text-zinc-400" : "text-zinc-650"
+              }`}>
+                Our kitchen prides itself on authentic preparation. Taste the iconic flavors of Northern Ethiopia, slow-cooked to absolute perfection by local culinary masters.
+              </p>
+
+              {/* Sample Platter interactive list */}
+              <div className="space-y-3 pt-2">
+                <div className={`p-4 rounded border transition-colors duration-500 ${
+                  isDarkMode ? "border-zinc-900 bg-zinc-950" : "border-zinc-200 bg-zinc-50"
+                }`}>
+                  <h4 className={`text-xs uppercase tracking-wider font-mono font-bold transition-colors duration-500 ${
+                    isDarkMode ? "text-white" : "text-black"
+                  }`}>Traditional Chef's Platter</h4>
+                  <p className={`text-xs font-serif mt-1 transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-400" : "text-zinc-650"
+                  }`}>
+                    A colorful assembly of authentic stew varieties served over perfectly baked light injera. Recommended for sharing.
+                  </p>
+                </div>
+
+                <div className={`p-4 rounded border transition-colors duration-500 ${
+                  isDarkMode ? "border-zinc-900 bg-zinc-950" : "border-zinc-200 bg-zinc-50"
+                }`}>
+                  <h4 className={`text-xs uppercase tracking-wider font-mono font-bold transition-colors duration-500 ${
+                    isDarkMode ? "text-white" : "text-black"
+                  }`}>Intimate Coffee Ritual</h4>
+                  <p className={`text-xs font-serif mt-1 transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-400" : "text-zinc-650"
+                  }`}>
+                    Experience the complete ceremony: live roasting of green coffee cherries, aromatic frankincense smoke, and rich triple-pour single origin.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => scrollToSection("booking-engine")}
+                className={`w-full sm:w-auto px-8 py-3.5 border text-xs font-bold uppercase tracking-widest rounded transition-all duration-500 cursor-pointer ${
+                  isDarkMode 
+                    ? "border-blue-500 text-blue-400 hover:bg-blue-500/10" 
+                    : "border-blue-600 text-blue-600 hover:bg-blue-50"
+                }`}
+              >
+                Book Dinner Stay Reservation
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 7. LOCATION, BOUTIQUE TRANSIT & MAPS */}
+      <section id="location" className={`py-24 border-y relative overflow-hidden transition-colors duration-500 ${
+        isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+      }`}>
+        {/* Decorative backdrop shapes */}
+        <div className={`absolute top-0 right-0 w-96 h-96 rounded-full filter blur-3xl -z-10 transition-colors duration-500 ${
+          isDarkMode ? "bg-white/5" : "bg-black/5"
+        }`} />
+        <div className={`absolute bottom-0 left-0 w-96 h-96 rounded-full filter blur-3xl -z-10 transition-colors duration-500 ${
+          isDarkMode ? "bg-white/5" : "bg-black/5"
+        }`} />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-12">
+          
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className={`text-xs uppercase tracking-[0.3em] font-mono block transition-colors duration-500 ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-500"
+            }`}>Prime Coordinates</span>
+            <h2 className={`font-serif text-3xl sm:text-4xl uppercase tracking-wider transition-colors duration-500 ${
+              isDarkMode ? "text-white" : "text-black"
+            }`}>Your Oasis in Northern Ethiopia</h2>
+            <div className={`w-20 h-0.5 mx-auto mt-2 transition-colors duration-500 ${isDarkMode ? "bg-white" : "bg-black"}`} />
+            <p className={`text-sm font-serif italic leading-relaxed transition-colors duration-500 ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-650"
+            }`}>
+              Positioned majestically within the beautiful, secure mountain range of Kombolcha. Follow our customized transit routes or view our live interactive map.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch">
+            
+            {/* Left Panel: Real Interactive Google Map (6 Cols) */}
+            <div className={`xl:col-span-7 border rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-2xl min-h-[450px] transition-colors duration-500 ${
+              isDarkMode ? "bg-black border-zinc-900" : "bg-white border-zinc-200"
+            }`}>
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between">
+                  <span className={`text-[10px] font-mono tracking-widest uppercase font-bold transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-400" : "text-zinc-600"
+                  }`}>LIVE PROPERTY MARKER</span>
+                  <span className="text-[9px] font-mono tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">GPS SYNCED</span>
+                </div>
+                <h4 className={`font-serif text-sm uppercase tracking-wider transition-colors duration-500 ${
+                  isDarkMode ? "text-white" : "text-black"
+                }`}>Kombolcha High-Mountain Plateau</h4>
+                <p className={`text-xs font-mono transition-colors duration-500 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Location Code: 3PGV+H5, Kombolcha, Wollo, Ethiopia</p>
+              </div>
+
+              {/* The real interactive map iframe */}
+              <div className={`relative flex-1 w-full min-h-[280px] rounded-xl overflow-hidden border shadow-inner transition-colors duration-500 ${
+                isDarkMode ? "border-zinc-800" : "border-zinc-300"
+              }`}>
+                <iframe
+                  title="Yegof View Hotel, Kombolcha Live Location"
+                  src="https://maps.google.com/maps?q=Yegof%20View%20Hotel,%20Kombolcha,%20Ethiopia&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                  className="absolute inset-0 w-full h-full border-0 focus:outline-none opacity-100"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                ></iframe>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-4 mt-2 border-t border-zinc-900">
+                <div className="space-y-0.5">
+                  <p className={`text-[11px] font-mono uppercase transition-colors duration-500 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Interactive Satellite View</p>
+                  <p className={`text-xs font-serif italic transition-colors duration-500 ${isDarkMode ? "text-zinc-300" : "text-zinc-600"}`}>Nestled beautifully near Mt Yegof trailhead peaks</p>
+                </div>
+                <a
+                  href="https://maps.google.com/?q=Yegof+View+Hotel,+Kombolcha,+Ethiopia"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-5 py-2.5 font-semibold text-xs uppercase tracking-widest rounded flex items-center justify-center gap-1.5 shadow-lg cursor-pointer bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300"
+                >
+                  <MapPin className="w-3.5 h-3.5" /> Navigate via App
+                </a>
+              </div>
+            </div>
+
+            {/* Right Panel: Interactive Route Planner & direct private transit guide (5 Cols) */}
+            <div className={`xl:col-span-5 border rounded-2xl p-6 flex flex-col justify-between shadow-2xl relative transition-colors duration-500 ${
+              isDarkMode ? "bg-black border-zinc-900" : "bg-white border-zinc-200"
+            }`}>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <span className={`text-[10px] font-mono tracking-widest uppercase font-bold transition-colors duration-500 ${
+                    isDarkMode ? "text-zinc-400" : "text-zinc-500"
+                  }`}>INTELLIGENT ROUTING</span>
+                  <h4 className={`font-serif text-lg uppercase tracking-wider transition-colors duration-500 ${
+                    isDarkMode ? "text-white" : "text-black"
+                  }`}>Transit Planner</h4>
+                  <p className={`text-xs font-serif italic transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>
+                    Select your custom entry hub to view curated security-authorized travel pathways directly to our secure courtyard:
+                  </p>
+                </div>
+
+                {/* Interactive Transit Hub Tabs */}
+                <div className={`grid grid-cols-3 gap-2 p-1.5 rounded-lg border transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-100 border-zinc-200"
+                }`}>
+                  <button
+                    onClick={() => setSelectedRoute("airport")}
+                    className={`py-2 text-[10px] font-mono uppercase tracking-widest rounded-md transition-all cursor-pointer ${
+                      selectedRoute === "airport"
+                        ? (isDarkMode ? "bg-white text-black font-bold shadow-lg" : "bg-black text-white font-bold shadow-lg")
+                        : (isDarkMode ? "text-zinc-500 hover:text-white" : "text-zinc-500 hover:text-black")
+                    }`}
+                  >
+                    Airport (CSF)
+                  </button>
+                  <button
+                    onClick={() => setSelectedRoute("dessie")}
+                    className={`py-2 text-[10px] font-mono uppercase tracking-widest rounded-md transition-all cursor-pointer ${
+                      selectedRoute === "dessie"
+                        ? (isDarkMode ? "bg-white text-black font-bold shadow-lg" : "bg-black text-white font-bold shadow-lg")
+                        : (isDarkMode ? "text-zinc-500 hover:text-white" : "text-zinc-500 hover:text-black")
+                    }`}
+                  >
+                    Dessie Ridge
+                  </button>
+                  <button
+                    onClick={() => setSelectedRoute("addis")}
+                    className={`py-2 text-[10px] font-mono uppercase tracking-widest rounded-md transition-all cursor-pointer ${
+                      selectedRoute === "addis"
+                        ? (isDarkMode ? "bg-white text-black font-bold shadow-lg" : "bg-black text-white font-bold shadow-lg")
+                        : (isDarkMode ? "text-zinc-500 hover:text-white" : "text-zinc-500 hover:text-black")
+                    }`}
+                  >
+                    Addis Highway
+                  </button>
+                </div>
+
+                {/* Selected Route Narrative Card */}
+                <div className={`p-4 rounded-xl border space-y-3 min-h-[160px] flex flex-col justify-center transition-colors duration-500 ${
+                  isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                }`}>
+                  {selectedRoute === "airport" && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className={`text-xs font-serif font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Kombolcha Domestic Airport</span>
+                        <span className={`text-[10.5px] font-mono transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-500"}`}>12 KM • 15 MINS</span>
+                      </div>
+                      <p className={`text-xs font-serif leading-relaxed italic transition-colors duration-500 ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>
+                        "Exit airport terminal heading North-West on the asphalt highway. Head straight past the Wollo Agricultural depot, then take the gentle mountain ascent marked Yegof View. Road is fully paved and secured."
+                      </p>
+                      <div className={`text-[10px] font-mono p-2 rounded border transition-colors duration-500 ${
+                        isDarkMode ? "text-zinc-300 bg-zinc-900 border-zinc-800" : "text-zinc-700 bg-zinc-200 border-zinc-300"
+                      }`}>
+                        🔑 BOUTIQUE NOTE: Complimentary private shuttle pickup is active for all Executive Suites.
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRoute === "dessie" && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className={`text-xs font-serif font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Dessie City Mountain Gate</span>
+                        <span className={`text-[10.5px] font-mono transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-500"}`}>22 KM • 30 MINS</span>
+                      </div>
+                      <p className={`text-xs font-serif leading-relaxed italic transition-colors duration-500 ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>
+                        "Descend the majestic mountain ridges via the Dessie-Kombolcha scenic highway. Upon entering Kombolcha outskirts, turn sharp right at Mt Yegof conservation trail. Enjoy beautiful panoramic heights."
+                      </p>
+                      <div className={`text-[10px] font-mono p-2 rounded border transition-colors duration-500 ${
+                        isDarkMode ? "text-zinc-300 bg-zinc-900 border-zinc-800" : "text-zinc-700 bg-zinc-200 border-zinc-300"
+                      }`}>
+                        ⛰️ SCENIC NOTE: Beautiful sunrise lookouts are active along this path. Safe for night travel.
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRoute === "addis" && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className={`text-xs font-serif font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Addis Ababa Highland Road</span>
+                        <span className={`text-[10.5px] font-mono transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-500"}`}>360 KM • scenic drive</span>
+                      </div>
+                      <p className={`text-xs font-serif leading-relaxed italic transition-colors duration-500 ${isDarkMode ? "text-zinc-300" : "text-zinc-700"}`}>
+                        "Follow the grand North-South national corridor. Traverse the scenic Shoa tunnels and the Kemise valley flats. Kombolcha acts as the northern gateway, situated directly on Mt Yegof slopes."
+                      </p>
+                      <div className={`text-[10px] font-mono p-2 rounded border transition-colors duration-500 ${
+                        isDarkMode ? "text-zinc-300 bg-zinc-900 border-zinc-800" : "text-zinc-700 bg-zinc-200 border-zinc-300"
+                      }`}>
+                        🚗 DRIVE NOTE: High-ground clearance or boutique SUV recommended for optimal highland touring.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Real Cloudinary property view overlay to maintain exact resources */}
+              <div className="relative h-24 mt-4 rounded-lg overflow-hidden border border-zinc-900 group">
+                <img
+                  src="https://res.cloudinary.com/lshk4vru/image/upload/v1783355370/1.3_gfwdbq.jpg"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-90"
+                  alt="Yegof View mountain range context"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-transparent flex items-center p-3">
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] font-mono tracking-widest text-zinc-300 uppercase">SCENIC HIGHLIGHT</span>
+                    <p className="text-xs text-white font-serif font-bold italic">Panoramic mountain ridges visible from your suite windows</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Shuttle reservation request */}
+              <div className="pt-4 mt-4 border-t border-zinc-900 flex gap-2">
+                <a
+                  href="tel:+251911424085"
+                  className={`flex-1 py-3 border text-center font-bold uppercase tracking-widest text-[10px] rounded transition-all duration-500 flex items-center justify-center gap-1.5 cursor-pointer ${
+                    isDarkMode 
+                      ? "border-white text-white hover:bg-white/10" 
+                      : "border-black text-black hover:bg-black/10"
+                  }`}
+                >
+                  <Phone className="w-3.5 h-3.5" /> Book Shuttle: +251 91 142 4085
+                </a>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 8. TRUST, CONVENIENCE & FAQ */}
+      <section id="faq" className={`py-24 transition-colors duration-500 ${
+        isDarkMode ? "bg-black text-white" : "bg-white text-black"
+      }`}>
+        <div className="max-w-4xl mx-auto px-6 space-y-12">
+          
+          <div className="text-center space-y-3">
+            <span className={`text-xs uppercase tracking-[0.3em] font-mono font-bold transition-colors duration-500 ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-500"
+            }`}>Guest Clarity</span>
+            <h2 className={`font-serif text-4xl uppercase tracking-wider transition-colors duration-500 ${
+              isDarkMode ? "text-white" : "text-black"
+            }`}>Confidence in Your Stay</h2>
+            <div className={`w-20 h-0.5 mx-auto mt-2 transition-colors duration-500 ${isDarkMode ? "bg-white" : "bg-black"}`} />
+          </div>
+
+          <div className="space-y-4">
+            
+            {/* FAQ 1 */}
+            <div className={`border rounded overflow-hidden transition-all duration-500 ${
+              isDarkMode ? "border-zinc-900 bg-zinc-950 hover:bg-black" : "border-zinc-200 bg-zinc-50 hover:bg-white"
+            }`}>
+              <button
+                onClick={() => setActiveFAQ(activeFAQ === 0 ? null : 0)}
+                className="w-full flex items-center justify-between p-6 text-left cursor-pointer"
+              >
+                <span className="font-serif text-sm uppercase tracking-wider font-semibold">Q: Is parking available at the property?</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-500 ${
+                  isDarkMode ? "text-zinc-400" : "text-zinc-600"
+                } ${activeFAQ === 0 ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {activeFAQ === 0 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className={`border-t transition-colors duration-500 ${isDarkMode ? "border-zinc-900 bg-zinc-900/10" : "border-zinc-200 bg-zinc-100/30"}`}
+                  >
+                    <p className={`p-6 text-xs font-serif leading-relaxed italic transition-colors duration-500 ${
+                      isDarkMode ? "text-zinc-400" : "text-zinc-650"
+                    }`}>
+                      A: Yes, we offer secure, free private parking directly within our hotel grounds. Street parking options are also available and fully secured.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* FAQ 2 */}
+            <div className={`border rounded overflow-hidden transition-all duration-500 ${
+              isDarkMode ? "border-zinc-900 bg-zinc-950 hover:bg-black" : "border-zinc-200 bg-zinc-50 hover:bg-white"
+            }`}>
+              <button
+                onClick={() => setActiveFAQ(activeFAQ === 1 ? null : 1)}
+                className="w-full flex items-center justify-between p-6 text-left cursor-pointer"
+              >
+                <span className="font-serif text-sm uppercase tracking-wider font-semibold">Q: Do you accept mobile payments for transactions?</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-500 ${
+                  isDarkMode ? "text-zinc-400" : "text-zinc-600"
+                } ${activeFAQ === 1 ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {activeFAQ === 1 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className={`border-t transition-colors duration-500 ${isDarkMode ? "border-zinc-900 bg-zinc-900/10" : "border-zinc-200 bg-zinc-100/30"}`}
+                  >
+                    <p className={`p-6 text-xs font-serif leading-relaxed italic transition-colors duration-500 ${
+                      isDarkMode ? "text-zinc-400" : "text-zinc-650"
+                    }`}>
+                      A: Yes, we support NFC mobile payments and local digital transfers for your ultimate convenience and ease of booking during your stay.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* FAQ 3 */}
+            <div className={`border rounded overflow-hidden transition-all duration-500 ${
+              isDarkMode ? "border-zinc-900 bg-zinc-950 hover:bg-black" : "border-zinc-200 bg-zinc-50 hover:bg-white"
+            }`}>
+              <button
+                onClick={() => setActiveFAQ(activeFAQ === 2 ? null : 2)}
+                className="w-full flex items-center justify-between p-6 text-left cursor-pointer"
+              >
+                <span className="font-serif text-sm uppercase tracking-wider font-semibold">Q: Are dining and drink reservations needed?</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-500 ${
+                  isDarkMode ? "text-zinc-400" : "text-zinc-600"
+                } ${activeFAQ === 2 ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {activeFAQ === 2 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className={`border-t transition-colors duration-500 ${isDarkMode ? "border-zinc-900 bg-zinc-900/10" : "border-zinc-200 bg-zinc-100/30"}`}
+                  >
+                    <p className={`p-6 text-xs font-serif leading-relaxed italic transition-colors duration-500 ${
+                      isDarkMode ? "text-zinc-400" : "text-zinc-650"
+                    }`}>
+                      A: Reservations are highly recommended for dinner, specifically during weekends, to secure the best rooftop sunset dining tables over Mount Yegof.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* FAQ 4 */}
+            <div className={`border rounded overflow-hidden transition-all duration-500 ${
+              isDarkMode ? "border-zinc-900 bg-zinc-950 hover:bg-black" : "border-zinc-200 bg-zinc-50 hover:bg-white"
+            }`}>
+              <button
+                onClick={() => setActiveFAQ(activeFAQ === 3 ? null : 3)}
+                className="w-full flex items-center justify-between p-6 text-left cursor-pointer"
+              >
+                <span className="font-serif text-sm uppercase tracking-wider font-semibold">Q: How do we confirm our online stay bookings?</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-500 ${
+                  isDarkMode ? "text-zinc-400" : "text-zinc-600"
+                } ${activeFAQ === 3 ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {activeFAQ === 3 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className={`border-t transition-colors duration-500 ${isDarkMode ? "border-zinc-900 bg-zinc-900/10" : "border-zinc-200 bg-zinc-100/30"}`}
+                  >
+                    <p className={`p-6 text-xs font-serif leading-relaxed italic transition-colors duration-500 ${
+                      isDarkMode ? "text-zinc-400" : "text-zinc-650"
+                    }`}>
+                      A: When you submit a booking request via our interactive engine, your registration is stored securely in our system. You can call our direct reservation line (+251 91 142 4085) for an instantaneous room allocation check.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+          </div>
+
+          {/* Quick contact trigger cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
+            <div className={`p-5 border rounded-lg text-center space-y-1 transition-colors duration-500 ${
+              isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+            }`}>
+              <ShieldCheck className={`w-5 h-5 mx-auto transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+              <h5 className={`text-xs uppercase tracking-wider font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Secure Property</h5>
+              <p className={`text-[10px] font-serif italic transition-colors duration-500 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Closed-loop security around hotel perimeter</p>
+            </div>
+            <div className={`p-5 border rounded-lg text-center space-y-1 transition-colors duration-500 ${
+              isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+            }`}>
+              <Clock className={`w-5 h-5 mx-auto transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+              <h5 className={`text-xs uppercase tracking-wider font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>24/7 Frontdesk</h5>
+              <p className={`text-[10px] font-serif italic transition-colors duration-500 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Dedicated English-speaking staff members</p>
+            </div>
+            <div className={`p-5 border rounded-lg text-center space-y-1 transition-colors duration-500 ${
+              isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+            }`}>
+              <CreditCard className={`w-5 h-5 mx-auto transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`} />
+              <h5 className={`text-xs uppercase tracking-wider font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Flexible Rates</h5>
+              <p className={`text-[10px] font-serif italic transition-colors duration-500 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Pay upon arrival or local transfers</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 9. FINAL CALL TO ACTION (Footer) */}
+      <footer className={`pt-20 pb-12 relative overflow-hidden border-t transition-colors duration-500 ${
+        isDarkMode ? "bg-zinc-950 border-zinc-900 text-white" : "bg-zinc-50 border-zinc-200 text-black"
+      }`}>
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto px-6 sm:px-12 relative z-10 space-y-16">
+          
+          <div className="text-center max-w-3xl mx-auto space-y-6">
+            <span className={`text-xs uppercase tracking-[0.3em] font-mono block transition-colors duration-500 ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-500"
+            }`}>Book Your Sanctuary</span>
+            <h2 className={`font-serif text-4xl sm:text-5xl uppercase tracking-wider transition-colors duration-500 ${
+              isDarkMode ? "text-white" : "text-black"
+            }`}>Experience the Best of Kombolcha</h2>
+            <p className={`text-base font-serif italic leading-relaxed max-w-xl mx-auto transition-colors duration-500 ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-650"
+            }`}>
+              Your luxury sanctuary awaits in Northern Ethiopia. Direct reservations are recommended to secure high-floor suites.
+            </p>
+            
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a
+                href="tel:+251911424085"
+                className={`w-full sm:w-auto px-8 py-4 font-bold uppercase tracking-widest text-xs rounded transition-colors duration-500 shadow-2xl flex items-center justify-center gap-2 cursor-pointer ${
+                  isDarkMode 
+                    ? "bg-white text-black hover:bg-zinc-200 shadow-white/5" 
+                    : "bg-black text-white hover:bg-zinc-850 shadow-black/5"
+                }`}
+              >
+                <Phone className="w-4 h-4" /> Call to Book: +251 91 142 4085
+              </a>
+              <button
+                onClick={() => scrollToSection("booking-engine")}
+                className={`w-full sm:w-auto px-8 py-4 border font-bold uppercase tracking-widest text-xs rounded transition-colors duration-500 cursor-pointer ${
+                  isDarkMode 
+                    ? "border-white/25 text-white hover:bg-white/5" 
+                    : "border-black/25 text-black hover:bg-black/5"
+                }`}
+              >
+                Instant Price Calculator
+              </button>
+            </div>
+          </div>
+
+          <div className={`border-t pt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-xs transition-colors duration-500 ${
+            isDarkMode ? "border-zinc-900 text-zinc-400" : "border-zinc-200 text-zinc-600"
+          }`}>
+            <div className="space-y-3">
+              <div className="flex flex-col">
+                <span className={`font-serif text-xl tracking-[0.1em] uppercase font-bold transition-colors duration-500 ${
+                  isDarkMode ? "text-white" : "text-black"
+                }`}>Yegof View Hotel</span>
+                <span className="text-[9px] tracking-[0.3em] uppercase opacity-65 font-mono">Luxury Boutique Sanctuary</span>
+              </div>
+              <p className="font-serif italic leading-relaxed">
+                "Spacious, remarkably quiet, and impeccably clean rooms. The most comfortable place I have stayed in Northern Ethiopia."
+              </p>
+            </div>
+
+            <div className="space-y-3 font-serif italic">
+              <h5 className={`font-mono text-xs uppercase tracking-widest not-italic font-bold transition-colors duration-500 ${
+                isDarkMode ? "text-white" : "text-black"
+              }`}>Sanctuary Location</h5>
+              <p className="leading-relaxed">
+                Yegof View Hotel<br />
+                Location Code: 3PGV+H5<br />
+                Kombolcha, Wollo, Ethiopia
+              </p>
+              <p className="not-italic text-[10px] font-mono tracking-wider uppercase text-zinc-500">
+                Near Mt Yegof Mountain Trailhead
+              </p>
+            </div>
+
+            <div className="space-y-4 font-mono text-[11px] uppercase tracking-wider">
+              <h5 className={`text-xs uppercase tracking-widest font-bold font-serif not-italic transition-colors duration-500 ${
+                isDarkMode ? "text-white" : "text-black"
+              }`}>Direct Concierge</h5>
+              <div className="space-y-1.5">
+                <p>Phone: +251 91 142 4085</p>
+                <p>Backup: +251 91 142 4085</p>
+                <p>Email: <a href="mailto:robelsisayawoke22@gmail.com" className="hover:underline">robelsisayawoke22@gmail.com</a></p>
+              </div>
+            </div>
+          </div>
+
+          <div className={`border-t pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10.5px] font-mono transition-colors duration-500 ${
+            isDarkMode ? "border-zinc-900 text-zinc-500" : "border-zinc-200 text-zinc-400"
+          }`}>
+            <p>© 2026 Yegof View Hotel, Kombolcha. All rights reserved.</p>
+            <p className="uppercase tracking-wider">Direct Verification Authorized • Port: 3000</p>
+          </div>
+
+        </div>
+      </footer>
+
+      {/* INTERACTIVE BOOKING SUCCESS MODAL */}
+      <AnimatePresence>
+        {bookingSuccessModal && (
+          <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`max-w-lg w-full rounded-xl overflow-hidden shadow-2xl relative border transition-colors duration-500 ${
+                isDarkMode ? "bg-black border-zinc-800" : "bg-white border-zinc-200"
+              }`}
+            >
+              <div className={`text-center p-6 space-y-1 transition-colors duration-500 ${
+                isDarkMode ? "bg-white text-black" : "bg-black text-white"
+              }`}>
+                <CheckCircle className={`w-10 h-10 mx-auto mb-1 ${isDarkMode ? "text-black" : "text-white"}`} />
+                <h3 className="font-serif text-xl uppercase tracking-wider font-bold">Sanctuary Reserved</h3>
+                <span className={`block text-xs font-mono tracking-widest uppercase font-bold py-1 px-3 rounded inline-block ${
+                  isDarkMode ? "bg-black/10 text-black" : "bg-white/10 text-white"
+                }`}>
+                  Code: {bookingSuccessModal.id}
+                </span>
+              </div>
+
+              <div className="p-6 sm:p-8 space-y-6">
+                <div className={`space-y-4 font-serif italic text-sm transition-colors duration-500 ${
+                  isDarkMode ? "text-zinc-300" : "text-zinc-700"
+                }`}>
+                  <p>
+                    Thank you, <span className={`font-bold not-italic transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>{bookingSuccessModal.customerName}</span>. Your luxury stay has been logged in our reservation ledger.
+                  </p>
+                  
+                  <div className={`p-4 rounded-lg border text-xs not-italic font-mono transition-colors duration-500 ${
+                    isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                  }`}>
+                    <div className="flex justify-between border-b border-zinc-900 pb-1 text-zinc-500">
+                      <span>Room Type</span>
+                      <span className={`font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>{bookingSuccessModal.roomName}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-zinc-900 pb-1 text-zinc-500">
+                      <span>Stay Dates</span>
+                      <span className={`font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>{bookingSuccessModal.checkIn} to {bookingSuccessModal.checkOut}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-zinc-900 pb-1 text-zinc-500">
+                      <span>Guests</span>
+                      <span className={`font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>{bookingSuccessModal.guests} Stayers</span>
+                    </div>
+                    <div className={`flex justify-between pt-1 font-bold text-sm ${isDarkMode ? "text-white" : "text-black"}`}>
+                      <span>Estimated Price</span>
+                      <span className="font-bold text-sm">${bookingSuccessModal.totalPrice} USD</span>
+                    </div>
+                  </div>
+
+                  {/* Direct Email Notification Status */}
+                  <div className={`p-4 rounded-xl border text-xs space-y-1.5 transition-colors duration-500 not-italic font-sans ${
+                    isDarkMode ? "bg-blue-950/20 border-blue-900/40 text-blue-300" : "bg-blue-50 border-blue-200 text-blue-800"
+                  }`}>
+                    <div className="flex items-center gap-2 font-bold">
+                      <Mail className="w-4 h-4 text-blue-500 shrink-0" />
+                      <span>Email Dispatched to Concierge</span>
+                    </div>
+                    <p className="font-serif italic text-[11px] leading-relaxed text-zinc-550">
+                      Your pre-formatted reservation email has been prepared and opened directly for <strong>robelsisayawoke22@gmail.com</strong>.
+                    </p>
+                  </div>
+
+                  <div className={`p-4 rounded text-xs leading-relaxed font-serif border transition-colors duration-500 ${
+                    isDarkMode ? "bg-zinc-900/50 border-zinc-800 text-zinc-300" : "bg-zinc-100 border-zinc-200 text-zinc-700"
+                  }`}>
+                    <span className={`font-bold block mb-1 transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>To Finalize Your Stay:</span>
+                    We suggest calling or texting us directly at <span className={`font-bold font-mono transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>+251 91 142 4085</span> with your reservation code <span className={`font-mono px-1 rounded ${isDarkMode ? "bg-white/10 text-white" : "bg-black/10 text-black"}`}>{bookingSuccessModal.id}</span> to finalize room number allocations or shuttle pickup services.
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <a
+                    href={`tel:+251911424085`}
+                    className={`flex-1 text-center font-bold uppercase tracking-widest py-3 rounded text-xs transition-colors duration-500 flex items-center justify-center gap-2 ${
+                      isDarkMode ? "bg-white hover:bg-zinc-200 text-black" : "bg-black hover:bg-zinc-800 text-white"
+                    }`}
+                  >
+                    <Phone className="w-3.5 h-3.5" /> Call Concierge
+                  </a>
+                  <button
+                    onClick={() => setBookingSuccessModal(null)}
+                    className={`flex-1 border font-bold uppercase tracking-widest py-3 rounded text-xs transition-colors duration-500 cursor-pointer ${
+                      isDarkMode ? "border-zinc-800 hover:bg-white/5 text-white" : "border-zinc-200 hover:bg-black/5 text-black"
+                    }`}
+                  >
+                    Dismiss Receipt
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MY BOOKINGS MANAGER MODAL */}
+      <AnimatePresence>
+        {showMyBookings && (
+          <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`max-w-lg w-full rounded-xl overflow-hidden shadow-2xl relative border transition-colors duration-500 ${
+                isDarkMode ? "bg-black border-zinc-800" : "bg-white border-zinc-200"
+              }`}
+            >
+              <div className={`p-6 flex justify-between items-center border-b transition-colors duration-500 ${
+                isDarkMode ? "border-zinc-900" : "border-zinc-200"
+              }`}>
+                <div className="space-y-0.5">
+                  <h3 className={`font-serif text-lg uppercase tracking-wider transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>Your Sanctuary Bookings</h3>
+                  <p className={`text-[11px] font-serif italic transition-colors duration-500 ${isDarkMode ? "text-zinc-500" : "text-zinc-400"}`}>Stored locally on your browser cache</p>
+                </div>
+                <button
+                  onClick={() => setShowMyBookings(false)}
+                  className={`p-1 rounded transition-colors cursor-pointer ${
+                    isDarkMode ? "text-white hover:bg-zinc-900" : "text-black hover:bg-zinc-100"
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+                {userBookings.length === 0 ? (
+                  <p className={`text-xs font-serif italic py-6 text-center transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-550"}`}>
+                    No active stay reservations booked yet. Submit the builder booking form to generate stay codes.
+                  </p>
+                ) : (
+                  userBookings.map((booking) => (
+                    <div key={booking.id} className={`p-4 rounded border relative space-y-3 transition-colors duration-500 ${
+                      isDarkMode ? "bg-zinc-950 border-zinc-900" : "bg-zinc-50 border-zinc-200"
+                    }`}>
+                      <div className={`absolute top-4 right-4 text-[10px] px-2 py-0.5 rounded border font-mono transition-colors duration-500 ${
+                        isDarkMode ? "bg-zinc-900 text-zinc-300 border-zinc-800" : "bg-zinc-200 text-zinc-700 border-zinc-300"
+                      }`}>
+                        {booking.id}
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className={`block text-[10px] uppercase tracking-widest font-mono transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-500"}`}>Confirmed Request</span>
+                        <h4 className={`text-sm font-serif font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>{booking.roomName}</h4>
+                        <p className={`text-xs font-serif leading-relaxed transition-colors duration-500 ${isDarkMode ? "text-zinc-400" : "text-zinc-650"}`}>
+                          Dates: {booking.checkIn} to {booking.checkOut} • {booking.guests} Guests
+                        </p>
+                      </div>
+
+                      <div className={`flex justify-between items-center pt-2 border-t text-xs transition-colors duration-500 ${isDarkMode ? "border-zinc-900" : "border-zinc-200"}`}>
+                        <span className={`font-bold transition-colors duration-500 ${isDarkMode ? "text-white" : "text-black"}`}>${booking.totalPrice} USD</span>
+                        <div className="flex gap-3 items-center">
+                          <a
+                            href={`mailto:robelsisayawoke22@gmail.com?subject=${encodeURIComponent(`Booking Request: ${booking.roomName} (Code: ${booking.id})`)}&body=${encodeURIComponent(
+                              `Dear Yegof View Concierge,\n\n` +
+                              `I would like to submit a stay reservation with the following details:\n\n` +
+                              `- Reservation Code: ${booking.id}\n` +
+                              `- Selected Suite: ${booking.roomName}\n` +
+                              `- Full Name: ${booking.customerName}\n` +
+                              `- Contact Phone: ${booking.customerPhone}\n` +
+                              `- Check-In Date: ${booking.checkIn}\n` +
+                              `- Check-Out Date: ${booking.checkOut}\n` +
+                              `- Number of Guests: ${booking.guests}\n` +
+                              `- Estimated Stay Price: $${booking.totalPrice} USD\n` +
+                              `- Special Requests: ${booking.specialRequests || "None"}\n\n` +
+                              `Please contact me to confirm final availability.\n\nBest regards,\n${booking.customerName}`
+                            )}`}
+                            className="p-1 text-zinc-500 hover:text-blue-500 transition-colors"
+                            title="Send/Email booking details to robelsisayawoke22@gmail.com"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </a>
+                          <button
+                            onClick={() => handleCancelBooking(booking.id)}
+                            className="p-1 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+                            title="Cancel stays request"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className={`p-6 border-t flex gap-3 transition-colors duration-500 ${
+                isDarkMode ? "border-zinc-900 bg-zinc-950" : "border-zinc-200 bg-zinc-50"
+              }`}>
+                <a
+                  href="tel:+251911424085"
+                  className={`w-full text-center font-bold uppercase tracking-widest py-3.5 rounded text-xs transition-colors duration-500 flex items-center justify-center gap-2 ${
+                    isDarkMode ? "bg-white hover:bg-zinc-200 text-black shadow-lg shadow-white/5" : "bg-black hover:bg-zinc-800 text-white shadow-lg shadow-black/5"
+                  }`}
+                >
+                  <Phone className="w-3.5 h-3.5" /> Direct Call Concierge
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+}
